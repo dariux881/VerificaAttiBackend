@@ -1,0 +1,70 @@
+C.I.,DESCRIZIONE,QUANDO SI UTILIZZA
+A0,Fuori campo IVA acquisti,documenti SA
+B1,Esente art. 10 comma 2 Dpr. 633/72,prestazioni effettuate nei confronti dei soci da consorzi (es. fatture di Lepida)
+B2,Esente art. 10 p. 19 Dpr. 633/72,prestazioni di ricovero e cura rese da enti ospedalieri o da cliniche e case di cura convenzionate
+BA,Esente art. 10 p. 27-ter Dpr. 633/72,"prestazioni socio-sanitarie, di assistenza domiciliare o ambulatoriale a favore di anziani ed inabili, ecc."
+BB,Esente art. 10 p. 12 Dpr. 633/72,"cessioni gratuite a favore di enti pubblici, di Onlus, di associazioni riconosciute o fondazioni aventi esclusivamente finalità di assistenza, beneficenza, educazione, istruzione, studio o ricerca scientifica"
+BC,Esente art. 10 p. 1 Dpr. 633/72,"operazioni di finanziamento, dilazioni di pagamento"
+BD,Esente art. 10 p. 20 Dpr. 633/72,"prestazioni educative, didattiche e di formazione"
+BE,Esente art. 10 p. 21 Dpr. 633/72,"prestazioni di asili, case di riposo per anziani (esempio liquidazione ai gestori residenziali e semiresidenziali per funzioni socio assistenziali)"
+BF,Esente art. 10 p. 22 Dpr. 633/72,"prestazioni di biblioteche, visite musei"
+BG,Esente art. 10 p. 27 Dpr. 633/72,prestazioni proprie dei servizi di pompe funebri
+BH,Esente art. 10 p. 27-quinquies Dpr. 633/72,beni acquistati o importati senza il diritto alla detrazione totale
+BI,Esente art. 10 p. 15 Dpr. 633/72,prestazioni di trasporto di malati o feriti effettuate da ambulanze
+BL,Esente art. 10 p. 14 Dpr. 633/72,prestazioni di trasporto urbano di persone effettuate da taxi
+BM,Esente art. 10 p. 18 Dpr. 633/72,"prestazioni sanitarie di diagnosi, cura e riabilitazione rese alla persona, nell'esercizio di professioni e arti sanitarie (medici, ecc..)"
+BN,Esente art. 10 p. 8 Dpr. 633/72,"locazioni e affitti relativi a cessioni di terreni e aziende agricole, di aree diverse da quelle destinate a parcheggio e senza destinazione edificatoria e locazione di fabbricati per i quali il locatore non ha manifestato l'opzione per l'imposizione"
+BO,Esente art. 10 p. 2 Dpr. 633/72,"operazioni di assicurazione, di riassicurazione e di vitalizio"
+BP,Esente art. 10 p. 16 Dpr. 633/72,prestazioni del servizio postale
+BQ,Esente art. 10 p. 5 Dpr. 633/72,operazioni relative ai versamenti di imposte effettuati per conto dei contribuenti
+BR,Esente art. 10 p. 8-bis Dpr. 633/72,cessioni di fabbricati NON strumentali
+BS,Esente art. 14 comma 10 L. 537/93,prestazioni di formazione al personale comunale
+BT,Esente art. 10 p. 8-ter Dpr. 633/72,cessioni di fabbricati strumentali per i quali il locatore non ha manifestato l'opzione per l'imposizione
+BZ,Esente art. 10 p. 22 Dpr. 633/72 GRATUITO,"prestazioni di biblioteche, visite musei gratuite"
+CA,Non imponibile art. 8 Dpr. 633/72,cessioni all'esportazione
+CB,Non imponibile art. 8-bis Dpr. 633/72,operazioni assimilate alle cessioni all'esportazione
+CC,Non imponibile art. 9 Dpr. 633/72,servizi internazionali o connessi agli scambi internazionali
+CD,Non imponibile art. 74 c. 7-8 Dpr. 633/72,cessioni di rotami
+CE,Non imponibile art. 72 Dpr. 633/72,operazioni non imponibili
+CF,Non imponibile art. 41 c. 1 D.L. 331/93,"cessioni intracomunitarie di beni, non imponibili"
+CG,Non imponibile art. 9 c. 1 Dpr. 633/72,trasporto di persone o beni internazionali
+CI,Non imponibile art. 8 Dpr. 633/72 dichiarazioni intento,cessioni all'esportazione derivanti da dichiarazioni d'intento
+CL,Non imponibile art. 68 Dpr. 633/72,importazioni non soggette all'imposta
+D1,Beni usati L. 85/95 art. 36 c.5,regime del margine - beni usati
+D2,Non soggette art. 1 c. 111-113 L. 208/2015,regime forfettario
+D3,Libri importati da UE art. 5 D.M. 9/4/93,libri importati dall'Unione Europea
+DC,Non soggette art. 1 e 4 Dpr. 633/72,fuori campo IVA per mancanza presupposto soggettivo
+DD,IVA assolta editore art. 74 l. C Dpr. 633/72,"regime monofase - settore editoria, per libri e cataloghi"
+DE,Non soggette art. 74-ter Dpr. 633/72,agenzie viaggio per fatture di acquisto
+DF,Non soggette art. 15 C. 1 N. 1 Dpr. 633/72,interessi moratori
+DG,Non sog. art. 15 C. 1 N. 3 Dpr. 633/72,rimborsi anticipazioni spese in nome e per conto
+DI,Non soggette ARTT. 1 e 5 DPR. 633/72,fuori campo IVA per mancanza presupposto soggettivo per professionisti e associazioni senza personalità giuridica
+DK,Non soggette comma 58 L. 190/2014 E D.L. 98/2011,regime forfettari
+DJ,"Non soggetto art. 3, comma 4, lettera a) DPR. 633/72",diritti autore
+DL,"Non soggette ART. 15,C. 1,N. 2 DPR. 633/72",beni ceduti a titolo di sconto o abbuono
+DM,Non soggette ARTT. 1 e 2 DPR. 633/72,cessioni di denaro
+DN,Non soggette art. 74 lett. D e E,regime monofase:\n- servizi di telecomunicazione (es. vendita di schede prepagate);\n- vendita biglietti di trasporto pubblici urbani e titoli per parcheggi veicoli.
+DP,Non soggette Art. 1 comma 100 L. 244/2007 e L. 388/00,regime forfettari
+DQ,Non appl. IVA Art. 17 C. 5-6 l. abis-ater DPR. 633/72,"reverse charge per cessioni fabbricati art. 10 punti 8bis e 8ter e per prestazioni di servizi di pulizia, di demolizione, di installazione di impianti e di completamento relative ad edifici"
+DS,Fuori campo IVA art. 7-ter DPR. 633/72,territorialità prestazioni di servizio fuori dal territorio dello Stato
+DT,Fuori campo IVA art. 7-quater DPR. 633/72,territorialità particolari prestazioni di servizio fuori dal territorio dello Stato
+DU,Fuori campo IVA art. 7-quinquies DPR. 633/72,"territorialità prestazioni di servizi culturali, artistici, sportivi, scientifici, educativi, ricreativi e simili fuori dal territorio dello Stato"
+DV,Fuori campo IVA art. 7-sexies DPR. 633/72,territorialità particolari prestazioni di servizio fuori dal territorio dello Stato rese a committenti non soggetti passivi
+DX,IVA assolta editore art. 74 l. C Dpr. 633/72 OMAGGI,regime monofase - settore editoria per libri e cataloghi in omaggio
+DY,Fuori campo IVA art. 2 comma 3 lett. c) DPR. 633/72,cessioni terreni non edificabili
+DZ,Fuori campo IVA art. 7-septies DPR. 633/72,territorialità particolari prestazioni di servizio fuori dal territorio dello Stato rese a non soggetti passivi stabiliti fuori della Comunità
+H1,IVA VENDITE 10%,"aliquota IVA vendite di cui alla tabella A, parte III allegata al DPR 633/72"
+H4,IVA VENDITE 4%,"aliquota IVA vendite di cui alla tabella A, parte II allegata al DPR 633/72"
+H5,IVA VENDITE 5%,"aliquota IVA vendite di cui alla tabella A, parte IIbis allegata al DPR 633/72"
+HB,IVA VENDITE 22%,aliquota IVA vendite ordinaria
+I1,IVA ACQUISTI 10% INDETRAIBILE,acquisti indetraibili di cui all'art. 19 del DPR 633/72
+M1,"IVA acquisti 10%, ad esigibilità differita","aliquota ridotta --> la percentuale sui prodotti e servizi del settore turistico (alberghi, pizzerie, hotel, ristoranti, ecc.), ad alcuni prodotti alimentari e ad,alcuni casi di recupero edilizio"
+M4,"IVA acquisti 4%, ad esigibilità differita","aliquota minima --> la percentuale sui prodotti di primaria importanza, come panetteria, generi alimentari, ecc."
+M5,"IVA acquisti 5%, ad esigibilità differita","aliquota ridotta --> prestazioni socio-sanitarie, assistenziali ed educative, rese da cooperative sociali e consorzi, mascherine e abbigliamento protettivo anti COVID"
+MA,Variazioni IVA per art. 26 ad esigibilità differita,note accredito senza IVA emesse dopo il decorso di un anno
+MB,"IVA acquisti 22%, ad esigibilità differita",aliquota IVA ordinaria -> la percentuale su tutti gli altri prodotti e servizi a cui non si applicano l'aliquota minima e quella ridotta
+P1,IVA vendite 10%-scissione pagamenti art. 17-ter DPR. 633/72,"aliquota IVA vendite di cui alla tabella A, parte III allegata al DPR 633/72 per clienti soggetti a split payment"
+P2,IVA vendite 22%-scissione pagamenti art. 17-ter DPR. 633/72,aliquota IVA vendite ordinaria per clienti soggetti a split payment
+P4,IVA vendite 4%-scissione pagamenti art. 17-ter DPR. 633/72,"aliquota IVA vendite di cui alla tabella A, parte II allegata al DPR 633/72 per clienti soggetti a split payment"
+T2,IVA vendite art. 74-ter DPR. 633/72,agenzie viaggio per fatture di vendita
+Z1,"Reverse Charge art. 17. C.6,lett. 4-ter DPR. 633/72 (acquisti)","reverse charge per prestazioni di servizi di pulizia, di demolizione, di installazione di impianti e di completamento relative ad edifici in acquisto"
