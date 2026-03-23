@@ -1,7 +1,11 @@
 import os
 import pandas as pd
+from datetime import date
+from sqlalchemy.orm import Session
+from sqlalchemy import and_
 
 from core.settings import get_settings
+from models.models import CDRVersion
 
 class DocumentLoader():
     def __init__(self):
@@ -70,6 +74,25 @@ class DocumentLoader():
         self.cdr_table = self._map_input(cdr_records, mapping)
 
         return self.cdr_table
+
+    def get_cdr_table_by_date(
+            self, 
+            db: Session,
+            target_date: date):
+        """
+        Recupera la versione della tabella CDR valida per la data specificata.
+        """
+        version = db.query(CDRVersion).filter(
+            and_(
+                CDRVersion.inizio_validita <= target_date,
+                CDRVersion.fine_validita >= target_date
+            )
+        ).first()
+        
+        if not version:
+            return None
+        
+        return version.dati # Restituisce il dizionario JSON salvato
 
     def get_rup_delegation_table(self):
         """

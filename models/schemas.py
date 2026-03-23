@@ -62,3 +62,15 @@ class FeedbackCreate(BaseModel):
     operazione_id: str
     voto: str  # "UP" | "DOWN"
     commento: Optional[str] = None
+
+# --- SCHEMI ADMIN ---
+class CDRTableEntry(BaseModel):
+    person_in_charge: str
+    unit: str
+    area_department: Optional[str]
+
+class CDRVersion(BaseModel):
+    nome_versione: Optional[str] = None
+    inizio_validita: datetime
+    fine_validita: Optional[datetime] = None
+    dati: Dict[str, CDRTableEntry]

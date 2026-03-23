@@ -8,8 +8,8 @@ def create_superuser():
     db: Session = SessionLocal()
     
     # 1. Dati dell'admin
-    admin_username = "dario"
-    admin_email = "dario@esempio.it"
+    admin_username = "admin"
+    admin_email = "admin@esempio.it"
     admin_password = "PasswordSegreta123!" # Cambiala subito!
 
     # 2. Controllo se esiste già

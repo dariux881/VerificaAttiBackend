@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     
     VERIFICA_ATTI_WEBHOOK_URL: str = Field(default="", validation_alias="VERIFICA_ATTI_WEBHOOK_URL")
 
-    SQLALCHEMY_DATABASE_URL: str = Field(default="", validation_alias="SQLALCHEMY_DATABASE_URL")
+    DATABASE_URL: str = Field(default="", validation_alias="DATABASE_URL")
 
     SECRET_KEY: str = Field(default="", validation_alias="JWT_SECRET_KEY")
     ALGORITHM: str = Field(default="", validation_alias="JWT_ALGORITHM")

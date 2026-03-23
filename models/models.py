@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 import enum
 import uuid
 from pydantic import BaseModel
-from sqlalchemy import Boolean, Column, ForeignKey, String, DateTime, JSON, Enum, Text
+from sqlalchemy import Boolean, Column, ForeignKey, String, DateTime, JSON, Enum, Text, Integer, Date
 from sqlalchemy.orm import relationship
 from typing import List, Optional, Dict, Any
 
@@ -24,7 +24,7 @@ class User(Base):
 
     full_name = Column(String, nullable=True)
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     # Relazione: permette di accedere a user.operazioni
     operazioni = relationship("Operazione", back_populates="author", cascade="all, delete-orphan")
@@ -34,7 +34,7 @@ class TokenBlacklist(Base):
     
     id = Column(String, primary_key=True, index=True, default=lambda: str(uuid.uuid4()))
     token = Column(String, unique=True, index=True, nullable=False)
-    expires_at = Column(DateTime, nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
 
 class Operazione(Base):
     __tablename__ = "operazioni"
@@ -45,8 +45,8 @@ class Operazione(Base):
 
     owner_id = Column(String, ForeignKey("utenti.id"), nullable=False)
     
-    created_at = Column(DateTime, default=datetime.now(timezone.utc))
-    completed_at = Column(DateTime, default=None, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=datetime.now(timezone.utc))
+    completed_at = Column(DateTime(timezone=True), default=None, nullable=True)
     result_data = Column(JSON, nullable=True)        # Qui salviamo categorie e globali
 
     # Relazione: permette di accedere a operazione.author
@@ -65,6 +65,23 @@ class Feedback(Base):
     param = Column(String)
     status = Column(String)
     result_data = Column(JSON)           # Copia esatta dei risultati
-    created_at_op = Column(DateTime)     # Quando è nata l'op
-    completed_at_op = Column(DateTime)   # Quando è finita l'op
-    submitted_at = Column(DateTime, default=datetime.now(timezone.utc))
+    created_at_op = Column(DateTime(timezone=True))     # Quando è nata l'op
+    completed_at_op = Column(DateTime(timezone=True))   # Quando è finita l'op
+    submitted_at = Column(DateTime(timezone=True), default=datetime.now(timezone.utc))
+
+class CDRVersion(Base):
+    __tablename__ = 'cdr_versions'
+
+    id = Column(String, primary_key=True, index=True, default=lambda: str(uuid.uuid4()))
+    nome_versione = Column(String(100), nullable=False)
+    
+    # Range di validità (Granularità Giornaliera)
+    inizio_validita = Column(Date, nullable=False, index=True)
+    fine_validita = Column(Date, nullable=False, index=True)
+    
+    # Il contenuto della tabella (i codici e i dettagli)
+    # Usiamo JSON per flessibilità, o una tabella correlata se preferisci
+    dati = Column(JSON, nullable=False) 
+
+    def __repr__(self):
+        return f"<CDRVersion(nome={self.nome_versione}, dal={self.inizio_validita}, al={self.fine_validita})>"

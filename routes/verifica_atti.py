@@ -7,7 +7,7 @@ from core.database import get_db
 from core.settings import get_settings
 from models.models import Feedback, Operazione, StatusEnum
 from models.schemas import FeedbackCreate, OperazioneRead
-from services.OperationService import OperationService
+from services.operation_service import OperationService
 
 # Creiamo il router con un prefisso e dei tag per la documentazione automatica
 router = APIRouter(
