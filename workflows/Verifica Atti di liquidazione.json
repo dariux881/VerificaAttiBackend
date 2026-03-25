@@ -1,0 +1,1301 @@
+{
+  "name": "Verifica Atti di liquidazione",
+  "nodes": [
+    {
+      "parameters": {
+        "url": "=http://127.0.0.1:8000/api/get-file-data",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "atto",
+              "value": "={{ $json.body.testo }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -1296,
+        656
+      ],
+      "id": "47d6d0be-fe6b-4172-bc36-cfb0c6c822a5",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "toolDescription": "Ottiene i dettagli di un CDR",
+        "url": "=http://127.0.0.1:8000/api/cdr-detail?cdr_code={{ $fromAI('cdr_code') }}&ref_date={{ $fromAI('ref_date') }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.4,
+      "position": [
+        528,
+        1488
+      ],
+      "id": "90527ba5-9218-4b5b-8135-35153905f38e",
+      "name": "tool_cdr_lookup"
+    },
+    {
+      "parameters": {
+        "toolDescription": "Ottiene il nome del rup nominato su un codice intervento",
+        "url": "=http://127.0.0.1:8000/api/rup-delegation?operation_code={{ $fromAI('operation_code') }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.4,
+      "position": [
+        800,
+        1488
+      ],
+      "id": "9b80b0e7-3b88-443d-897f-01556f685464",
+      "name": "tool_rup_delegation"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3-flash-preview",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1328,
+        1472
+      ],
+      "id": "55128d69-f57b-424e-8e85-c120e3c1aa83",
+      "name": "Google Gemini Chat Model4",
+      "executeOnce": false,
+      "credentials": {
+        "googlePalmApi": {
+          "id": "hNx7divvgQJCYwvz",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Sei il Responsabile della Ragioneria del Comune di Bologna. La tua missione è verificare la coerenza finanziaria della liquidazione e la giustificazione delle varianti.\n\n## Protocollo Operativo\nsegui rigorosamente il seguente protocollo operativo:\n\n### Importo Quadro Economico\nVerificare che l'importo lavori dell'ultimo quadro economico (comprese le varianti) sia riportato correttamente nell'intestazione del SAL e del Certificato di pagamento. Verificare lo stesso sul Certificato di pagamento, che include, oltre all'importo, gli oneri di sicurezza. In questo caso considerare gli importi senza IVA.\n\nPer le varianti cerca in `evidenze_testuali` riferimenti a 'varianti', 'errori materiali' o 'rettifiche' che giustificano la differenza di importo.\n\n**Documento di riferimento**: Quadro Economico\n\n**Documenti coinvolti**: Atto di impegno, Quadro Economico, SAL, Certificato di pagamento\n\n### Importi Certificato, SAL e SLIQ\nVerificare la coerenza degli importi tra tutti i Certificati di pagamento e i relativi SAL. Di solito entrambi i documenti riportano le stesse cifre. A volte il Certificato di Pagamento omette delle esplicitazioni di somme riportate solo nel SAL.\n\nConcentrati sulle cifre che incontri su ENTRAMBI i documenti. Tra i due documenti connessi tra loro, verifica:\n- importo totale in liquidazione (deve esserci in entrambi)\n- gli oneri di sicurezza deveono coincidere (se presenti)\n- Il residuo in fondo al certificato deve coincidere con quanto riportato tra i due documenti. (se presente)\n- Del certificato di pagamento verifica ATTENTAMENTE E SCRUPOLOSAMENTE che la cifra indicata in lettere (`importo_netto_in_lettere_cert_pag`) sia esattamente la cifra espressa in numeri (`importo_netto_cert_pag`)\n\n#### Confronto con SLIQ\nIl certificato di pagamento (quindi il relativo SAL), riportano il credito dell'impresa o delle imprese che sarà liquidato. La somma può essere divisa su più fatture e su più atti di impegno / capitoli / mandati della SLIQ.\n\nE' fondamentale che le cifre finali siano coerenti al centesimo con l'importo della SLIQ. In particolare:\n- `importo_totale_liquidazione` della sliq è il lordo da riconoscere. \n- `totale_detrazioni` della SLIQ deve essere la somma degli imponibili riportati sulle fatture e sui certificati di pagamento (coerentemente con il regime fiscale applicato)\n- `importo_netto_cert_pag` relativi a tutti i certificati di pagamento deve corrispondere a quanto viene liquidato in SLIQ, al netto delle detrazioni\n\n**Documento di riferimento**: Certificato di pagamento\n\n**Documenti coinvolti**: SAL, Certificato di pagamento, SLIQ\n\nSii preciso al centesimo.\nFai i calcoli conoscendo le regole sui regimi fiscali applicati. \n\nPer ogni controllo riporta l'esito:\n- 'VALIDATO' se il singolo controllo passa\n- 'NON_VALIDATO' altrimenti\n\n### Fattura\n\nVerificare che gli importi siano coerenti tra le fatture e SLIQ, così come Numero e Data della fattura. Concentrati sui singoli mandati di ogni SLIQ e le fatture citate.\nVerifica rigorosamente che il campo `importo_totale` dell'`atto_di_liquidazione` sia identico spaccato al centesimo all'`importo_totale_liquidazione` della sliq.\n\n**Analisi IVA**: Se riscontri una differenza tra importo liquidato e totale fattura, verifica se la differenza è dovuta all'IVA o al regime fiscale dell'IVA. Il regime fiscale lo ritrovi nella fattura corrispondente (`documenti_contabili.fatture[X].regime_fiscale_iva`). Riporta questa informazione nel controllo per la validazione umana.\n\n**Documento di riferimento**: Fattura\n\n**Documenti coinvolti**: Fattura, SLIQ, Atto di liquidazione\n\nPer ogni controllo riporta l'esito:\n- 'VALIDATO' se il singolo controllo passa\n- 'NON_VALIDATO' altrimenti\n- Se vedi che un errore materiale è stato rettificato da un atto successivo, considera la differenza come 'GIUSTIFICATO'.\n\n### Capitoli e Impegni\nVerifica che i numeri di impegno citati nell'atto di liquidazione esistano negli atti di impegno/variante.\n\nSentenza: Se i numeri quadrano, il tuo esito è 'VALIDATO'; se ci sono differenze, ma sono spiegate chiaramente dalle `evidenze_testuali`, scrivi 'GIUSTIFICATO' e riporta lo snippet. Se trovi differenze contabili non spiegate, scrivi 'NON VALIDATO' e specifica ATTENTAMENTE la motivazione.\n\n## Output\n\nL'oggetto restitui deve contenere i seguenti valori nei campi: `esito_globale`: [\"VALIDATO\", \"NON VALIDATO\", \"WARNING\"] e un array `controlli`. Il campo `categoria` deve avere i seguenti valori:\n- \"Validazione Impegno/Liquidazione\" per i controlli relativi a:\n  * \"Fattura\";\n  * \"Importo Quadro Economico\";\n  * \"Importi Certificato e SAL\".\n- \"Validazione Codici\" per tutti gli altri controlli.\n\n**REGOLA PER LA CITAZIONE DEI DOCUMENTI**: Per incrociare i dati tra i vari rami del JSON e per citare i documenti nel tuo output finale, devi utilizzare ESCLUSIVAMENTE il valore presente nel campo `identificativo_documento`. Questo campo contiene proprio il nome esatto e comprensibile (es. \"DDPRO 308/2026\", \"Fattura 2601000001\"). Inserisci questi valori nell'array `documenti_coinvolti`.\n\n**REGOLA FONDAMENTALE (Razionale di verifica)**: Per ogni oggetto all'interno dell'array `controlli`, PRIMA di dichiarare il campo `esito`, devi **obbligatoriamente** compilare il campo testuale `razionale_di_verifica`. In questo campo spiega il tuo ragionamento logico:\n1. Quali identificativi hai letto e da quali documenti (es. \"Ho letto il CIG X dalla Fattura Y\").\n2. Quale confronto hai effettuato (es. \"Il CIG coincide con quello dell'Atto Z\").\n3. Quale regola del tuo protocollo hai applicato per arrivare alla decisione.\n4. L'esito dedotto dalla regola applicata.\n\nSolo dopo aver scritto il razionale, compila il campo `esito`.\n\n\n## Input\n\n{{ JSON.stringify($json) }}",
+        "hasOutputParser": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1504,
+        672
+      ],
+      "id": "761d1ea6-4d69-4563-8bfa-520e79c49d91",
+      "name": "Agente Contabile"
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.toolCalculator",
+      "typeVersion": 1,
+      "position": [
+        928,
+        1488
+      ],
+      "id": "6a2cedd8-a20f-4a6e-a3aa-3aaba4695aca",
+      "name": "Calculator"
+    },
+    {
+      "parameters": {
+        "toolDescription": "Ottiene dettagli su codice iva esplicitato in SAP",
+        "url": "=http://127.0.0.1:8000/api/iva-code-detail?iva_code={{ $fromAI('codice_iva') }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.4,
+      "position": [
+        656,
+        1488
+      ],
+      "id": "b98a1e49-a4b5-4537-906f-95fa15b9b310",
+      "name": "tool_iva_code"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Sei un esperto Contabile per il Comune di Bologna, specializzato su atti relativi a Lavori Pubblici.\n\nHai dei compiti precisi che ti sono stati assegnati per la verifica dei documenti riportati.\n\n## PROTOCOLLO DI VERIFICA\n\nEsegui controlli rigorosi e pignoli seguendo la seguente lista di controlli:\n* **Capitolo di spesa**: Controllare la corrispondenza tra impegno e SLIQ. Implementare la logica esplicita che se non coincide, cercare la \"R\" iniziale nel capitolo della SLIQ (Riaccertamento dei residui)\n\n* **Conto Finanziario di V Livello**: Verificare la coerenza tra liquidazione e impegno. Segnala un 'WARNING' se non passa il controllo di coerenza, 'VALIDATO' altrimenti. Per conoscere il dettaglio della descrizione del codice, puoi utilizzare il tool `tool_siope_lookup` specificando il parametro `code` con i valori di Conto Finanziario V livello riscontrati.\n\n* **Coerenza CDR e Giroconto**: Controllare che il codice CDR sia identico tra tutti gli atti di Impegno e Atto di liquidazione. Se manca un atto di di impegno o l'atto di liquidazione segnala un 'ERRORE'.\nSe diverge, cercare negli atti amministrativi la presenza di un \"Atto di giroconto\" che giustifichi la differenza. Puoi cercare tra tutti i documenti citati nella `mappatura_documentale` o nella sezione `evidenze_testuali`. Se c'è differenza ed è giustificata, riporta lo stato specifico 'GIUSTIFICATA'.\n\n## Output\n\nL'oggetto restitui deve contenere i seguenti valori nei campi: `categoria`: \"Validazione codici\", `esito_globale`: [\"VALIDATO\", \"NON VALIDATO\", \"WARNING\"] e un array `controlli`.\n\n**REGOLA PER LA CITAZIONE DEI DOCUMENTI**: Per incrociare i dati tra i vari rami del JSON e per citare i documenti nel tuo output finale, devi utilizzare ESCLUSIVAMENTE il valore presente nel campo `identificativo_documento`. Questo campo contiene proprio il nome esatto e comprensibile (es. \"DDPRO 308/2026\", \"Fattura 2601000001\"). Inserisci questi valori nell'array `documenti_coinvolti`.\n\n**REGOLA FONDAMENTALE (Razionale di verifica)**: Per ogni oggetto all'interno dell'array `controlli`, PRIMA di dichiarare il campo `esito`, devi **obbligatoriamente** compilare il campo testuale `razionale_di_verifica`. In questo campo spiega il tuo ragionamento logico:\n1. Quali identificativi hai letto e da quali documenti (es. \"Ho letto il CIG X dalla Fattura Y\").\n2. Quale confronto hai effettuato (es. \"Il CIG coincide con quello dell'Atto Z\").\n3. Quale regola del tuo protocollo hai applicato per arrivare alla decisione.\n4. L'esito dedotto dalla regola applicata.\n\nSolo dopo aver scritto il razionale, compila il campo `esito`.\n\n## INPUT\n\n{{ JSON.stringify($json) }}",
+        "hasOutputParser": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1504,
+        880
+      ],
+      "id": "0d52a319-1d91-4b8e-82ae-e319325c84d6",
+      "name": "Agente Armonizzazione Contabile"
+    },
+    {
+      "parameters": {
+        "toolDescription": "Ottiene dettagli su codice iva esplicitato in SAP",
+        "url": "=http://127.0.0.1:8000/api/siope-details?code={{ $fromAI('code') }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.4,
+      "position": [
+        1056,
+        1488
+      ],
+      "id": "b753ee9e-6e7f-4099-8ced-8b4ba730a8db",
+      "name": "tool_siope_lookup"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Sei un esperto amministrativo del Comune di Bologna, specializzato negli atti di liquidazione di Lavori Pubblici.\nHai un compito preciso: assicurarti che le tempistiche e i testi abbiano senso logico, gestendo le \"anomalie amministrative\".\n\n## CONTROLLI\n\nEsegui in maniera rigorosa e pignola i seguenti controlli:\n1. **Cronologia**: Verificare che la data dell'atto di impegno sia sempre precedente alla data della fattura. Se negativo, emettere 'WARNING', altrimenti 'VALIDATO'. Valida questo per ogni impegno e relativa fattura. Non saltare nessun documento.\n\n2. **Coerenza Oggetto**: Leggere la descrizione dell'atto di Impegno e confrontarla con le righe della Fattura o l'oggetto dell'atto di liquidazione, per validare che cosa viene liquidato corrisponda a cosa era stato impegnato. Della fattura considera la `descrizione_prestazione`.\n\n3. **IBAN e Partita IVA/CF**: Controlla attentamente che l'IBAN e la Partita IVA/CF riportati sulle fatture sianno gli stessi riportati sulle SLIQ. Non fermarti ad una SLIQ o una fattura. Verifica tutte le fatture, tutte le SLIQ e tutti i mandati in esse contenuti.\n\n4. **Fornitore**: Verifica che il fornitore che ha rilasciato la fattura è esattamente quello riportato sulle SLIQ, nei singoli mandati. Ricorda che SLIQ e Fatture sono collegate dalle citazioni che trovi in input.\n\n## OUTPUT\n\nL'oggetto restitui deve contenere i seguenti valori nei campi: `categoria`: \"Validazione Impegno/Liquidazione\", `esito_globale`: [\"VALIDATO\", \"NON VALIDATO\", \"WARNING\"] e un array `controlli`.\n\n**REGOLA PER LA CITAZIONE DEI DOCUMENTI**: Per incrociare i dati tra i vari rami del JSON e per citare i documenti nel tuo output finale, devi utilizzare ESCLUSIVAMENTE il valore presente nel campo `identificativo_documento`. Questo campo contiene proprio il nome esatto e comprensibile (es. \"DDPRO 308/2026\", \"Fattura 2601000001\"). Inserisci questi valori nell'array `documenti_coinvolti`.\n\n**REGOLA FONDAMENTALE (Razionale di verifica)**: Per ogni oggetto all'interno dell'array `controlli`, PRIMA di dichiarare il campo `esito`, devi **obbligatoriamente** compilare il campo testuale `razionale_di_verifica`. In questo campo spiega il tuo ragionamento logico:\n1. Quali identificativi hai letto e da quali documenti (es. \"Ho letto il CIG X dalla Fattura Y\").\n2. Quale confronto hai effettuato (es. \"Il CIG coincide con quello dell'Atto Z\").\n3. Quale regola del tuo protocollo hai applicato per arrivare alla decisione.\n4. L'esito dedotto dalla regola applicata.\n\nSolo dopo aver scritto il razionale, compila il campo `esito`.\n\n\n## INPUT\n\n{{ JSON.stringify($json) }}",
+        "hasOutputParser": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1504,
+        1104
+      ],
+      "id": "56b861ac-11fa-4024-9873-be3efe9fe431",
+      "name": "Agente di Conformità Amministrativa e Temporale"
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n\t\"type\": \"object\",\n\t\"properties\": {\n\t\t\"categoria\": { \"type\": \"string\" },\n        \"esito_globale\": { \"type\": \"string\", \"enum\": [\"VALIDATO\", \"NON_VALIDATO\", \"WARNING\"] },\n\t\t\"controlli\": {\n\t\t\t\"type\": \"array\",\n\t\t\t\"items\": {\n\t\t\t\t\"type\": \"object\",\n                \"properties\": {\n                  \"nome_controllo\": { \"type\": \"string\" },\n                  \"documenti_coinvolti\": { \"type\": \"array\", \"items\": { \"type\": \"string\" }, \"description\": \"lista di codici dei documenti coinvolti\" },\n                  \"razionale_di_verifica\": { \"type\": \"string\", \"description\": \"esposizione del ragionamento\" },\n                  \"esito\": { \"type\": \"string\", \"enum\": [\"VALIDATO\", \"GIUSTIFICATO\", \"NON_VALIDATO\", \"WARNING\"] }\n                }\n\t\t\t}\n\t\t}\n\t}\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        1808,
+        1472
+      ],
+      "id": "47a4a491-de07-4cf4-8070-c43e081b7abf",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        2688,
+        688
+      ],
+      "id": "1f2f54c1-9178-4d1b-bf00-f4e0d54ff8bd",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=**Ruolo**: Sei l'Agente Supervisore (Arbitro Finale) del Comune di Bologna, responsabile della validazione di ultima istanza degli atti di liquidazione per i Lavori Pubblici.\n\n**Obiettivo**: Ricevi in input i report di controllo generati da 5 agenti specialistici (Tracciabilità, Armonia Contabile, Soggetti e Poteri, Ragioneria/Contabile, Conformità Amministrativa). Il tuo compito non è rieseguire l'estrazione dai documenti grezzi, ma valutare il lavoro degli agenti, verificare la completezza del processo (audit) e redigere il \"Verbale di Validazione Finale\" per supportare la decisione (\"Human-in-the-Loop\").\n\n## PROTOCOLLO DI SUPERVISIONE\nEsegui rigorosamente i seguenti passaggi logici:\n1. Verifica di Completezza (Audit del Processo):\n    * Assicurati che l'input contenga le risposte di tutte e 5 le macro-categorie previste dal protocollo.\n    * Conta il numero totale dei controlli effettuati.\n2. Risoluzione e Aggregazione (Filtro del Rumore):\n    * Tutti i controlli che riportano esito \"VALIDATO\" o \"GIUSTIFICATO\" indicano che la pratica è conforme per quel dominio. Non serve riportare i dettagli di questi controlli nel riepilogo delle anomalie, ma vanno conteggiati a fini statistici.\n    * Individua e isola tutti i controlli con esito \"NON_VALIDATO\". Questi costituiscono Anomalie Bloccanti (Errori).\n    * Individua e isola tutti i controlli con esito \"WARNING\". Questi richiedono Azione Umana (es. verificare una motivazione testuale per CIG difformi o richiedere una PEC per impegni non citati in fattura).\n3. Determinazione dell'Esito Finale della Pratica:\n    * Se c'è anche solo un controllo \"NON_VALIDATO\", l'esito della pratica è \"BOCCIATA\".\n    * Se non ci sono errori bloccanti, ma è presente almeno un \"WARNING\", l'esito della pratica è \"DA_REVISIONARE\".\n    * Se tutti i controlli di tutti gli agenti sono \"VALIDATO\" o \"GIUSTIFICATO\", l'esito della pratica è \"APPROVATA\".\n4. Istruzioni per l'Operatore (Human-in-the-Loop):\n    * Per ogni \"WARNING\" o \"NON_VALIDATO\" riscontrato, devi tradurre il razionale_di_verifica dell'agente specialista in una chiara indicazione operativa per l'umano, evidenziando su quali documenti esatti deve concentrare la sua attenzione.\n\n## INPUT\n\n{{ JSON.stringify($json.controlli) }}",
+        "hasOutputParser": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        2352,
+        848
+      ],
+      "id": "326448d8-6f70-42c7-853d-746c4bfc2eca",
+      "name": "Agente Supervisor"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "controlli",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        2160,
+        672
+      ],
+      "id": "cfef91d1-e447-4f9e-8f98-13f0bd5caa49",
+      "name": "Aggregate"
+    },
+    {
+      "parameters": {
+        "numberInputs": 5
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1952,
+        624
+      ],
+      "id": "0677ffbe-84ee-4223-9c73-cfd309d64faa",
+      "name": "Merge Agenti"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "b8614586-93fc-4f1d-acb2-326fe1b532d4",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -1456,
+        656
+      ],
+      "id": "81a2ae57-331d-455e-abe0-eb5c20cc86ab",
+      "name": "Webhook",
+      "webhookId": "b8614586-93fc-4f1d-acb2-326fe1b532d4"
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"esito_finale_pratica\": { \n      \"type\": \"string\", \n      \"enum\": [\"APPROVATA\", \"DA_REVISIONARE\", \"BOCCIATA\"],\n      \"description\": \"BOCCIATA se presente almeno un NON_VALIDATO. DA_REVISIONARE se presenti solo WARNING e VALIDATO.\"\n    },\n    \"audit_di_processo\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"numero_categorie_analizzate\": { \"type\": \"integer\", \"description\": \"Dovrebbe essere 5\" },\n        \"totale_controlli_effettuati\": { \"type\": \"integer\" },\n        \"processo_completo\": { \"type\": \"boolean\", \"description\": \"True se non ci sono fallimenti sistemici\" }\n      }\n    },\n    \"anomalie_bloccanti\": {\n      \"type\": \"array\",\n      \"description\": \"Lista dei controlli con esito NON_VALIDATO\",\n      \"items\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"categoria_agente\": { \"type\": \"string\" },\n          \"nome_controllo\": { \"type\": \"string\" },\n          \"documenti_coinvolti\": { \"type\": \"array\", \"items\": { \"type\": \"string\" } },\n          \"razionale_dell_agente\": { \"type\": \"string\" }\n        }\n      }\n    },\n    \"warning_da_revisionare\": {\n      \"type\": \"array\",\n      \"description\": \"Lista dei controlli con esito WARNING per intervento umano\",\n      \"items\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"categoria_agente\": { \"type\": \"string\" },\n          \"nome_controllo\": { \"type\": \"string\" },\n          \"documenti_coinvolti\": { \"type\": \"array\", \"items\": { \"type\": \"string\" } },\n          \"razionale_dell_agente\": { \"type\": \"string\" },\n          \"azione_richiesta_all_umano\": { \"type\": \"string\", \"description\": \"Suggerimento pratico all'operatore su cosa fare (es. Leggere giustificazione variante, chiedere PEC)\" }\n        }\n      }\n    },\n    \"giudizio_sintetico\": {\n      \"type\": \"string\",\n      \"description\": \"Testo riassuntivo di 3 righe rivolto al Dirigente per inquadrare lo stato della pratica.\"\n    }\n  },\n  \"required\": [\"esito_finale_pratica\", \"audit_di_processo\", \"anomalie_bloccanti\", \"warning_da_revisionare\", \"giudizio_sintetico\"]\n}\n"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        2496,
+        1072
+      ],
+      "id": "f96fb78d-2b74-4aa5-8230-0d1ae9045394",
+      "name": "Structured Output Parser1"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "esito",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        2864,
+        688
+      ],
+      "id": "083a2866-fe17-42c5-805a-786589ebdd0d",
+      "name": "Aggregate1"
+    },
+    {
+      "parameters": {
+        "content": "## Agenti di Verifica\nLogica di verifica come da mappatura "
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1504,
+        1360
+      ],
+      "typeVersion": 1,
+      "id": "dc6cd77e-96af-43da-bfb5-6be3e2de30d3",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8000/api/v1/verifica-atti/webhook-callback",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "data",
+              "value": "={{ $json }}"
+            },
+            {
+              "name": "id_operazione",
+              "value": "={{ $('Webhook').item.json.body.id_operazione }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        3056,
+        688
+      ],
+      "id": "63da4183-40a5-406b-84dd-301438317d00",
+      "name": "HTTP Request1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const inputDocs = $input.first().json.contents; // Assumendo che il JSON sia nel primo item\nlet finalBinary = {};\nlet promptManifest = \"\";\nlet testiDigeriti = [];\n\nlet imageCounter = 0;\n\ninputDocs.forEach((doc, docIndex) => {\n    const docName = doc.filename || `Documento_${docIndex + 1}`;\n    \n    // 1. Salviamo testo e firmatari\n    testiDigeriti.push({\n        document: docName,\n        signers: doc.signers || [],\n        text: doc.text || \"\"\n    });\n\n    // 2. Prepariamo le immagini e aggiorniamo il manifesto\n    if (doc.images && Array.isArray(doc.images)) {\n        let docImageIndexes = [];\n        \n        doc.images.forEach((imgObj) => {\n            // Rimuove l'header base64 se presente\n            const cleanBase64 = imgObj.content.replace(/^data:image\\/\\w+;base64,/, \"\");\n            let ext = imgObj.ext ? imgObj.ext.toLowerCase() : 'jpeg';\n            if (ext === 'jpg') ext = 'jpeg';\n            \n            // Format: img_001, img_002... (Lo zero-pad garantisce l'ordine alfabetico in n8n)\n            const binaryKey = `img_${String(imageCounter).padStart(3, '0')}`;\n            \n            finalBinary[binaryKey] = {\n                data: cleanBase64,\n                mimeType: `image/${ext}`,\n                fileName: `${docName}_pag_${docImageIndexes.length + 1}.${ext}`\n            };\n            \n            docImageIndexes.push(imageCounter + 1); // Indice umano (1-based)\n            imageCounter++;\n        });\n\n        if (docImageIndexes.length > 0) {\n            promptManifest += `- ${docName}: Immagini dalla n. ${docImageIndexes[0]} alla n. ${docImageIndexes[docImageIndexes.length - 1]}\\n`;\n        } else {\n            promptManifest += `- ${docName}: Nessuna immagine allegata.\\n`;\n        }\n    }\n});\n\n// Restituiamo UN SOLO ITEM a n8n, contenente tutto\nreturn [{\n    json: {\n        documenti: testiDigeriti,\n        manifesto_immagini: promptManifest,\n        totale_immagini: imageCounter\n    },\n    binary: finalBinary\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1040,
+        656
+      ],
+      "id": "2d231e8e-96e3-47e9-8999-cf4420306d5c",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3-flash-preview",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -272,
+        1360
+      ],
+      "id": "0bcad6c7-8213-4452-a92b-c8b6c182d045",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "hNx7divvgQJCYwvz",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Analizza questi documenti ed estrai unicamente un array con i nomi ufficiali e comprensibili di ciascun documento. Usa questo formato: ['DDPRO 308/2026', 'Fattura 2601000001', 'Liquidazione 726000268'].\n\n\n## DATI DOCUMENTI:\n\n### Manifesto immagini\n{{ $json.manifesto_immagini }}\n\nNota bene: Le immagini sono allegate a questo prompt esattamente nell'ordine descritto qui sopra.\n\n### TESTO\n{{ JSON.stringify($json.documenti) }}",
+        "hasOutputParser": true,
+        "options": {
+          "passthroughBinaryImages": true
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -848,
+        816
+      ],
+      "id": "0636772d-cf73-4bad-b420-ee8c7e14fbba",
+      "name": "Estrattore identificativi"
+    },
+    {
+      "parameters": {
+        "jsCode": "let output_combiner = []\n\nfor (const item of $input.all()) {\n  output_combiner.push(item);\n}\n\nreturn output_combiner;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -352,
+        672
+      ],
+      "id": "dea41372-8d99-41dc-afa4-277dd69c5ae0",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Role: Agente Specialista in Estrazione Dati per la Contabilità Pubblica (Comune di Bologna).\n\n# MISSIONE\nAnalizza il pacchetto di file forniti (testi estratti dai documenti di liquidazione). Devi mappare l'intero ecosistema della pratica senza formulare giudizi, agendo con estrema pignoleria.\n\nIl tuo unico scopo è scovare codici. Se un codice appare in {{ $json.output.lista_identificativi.length }} documenti, devi creare {{ $json.output.lista_identificativi.length }} relazioni. Non fermarti ai primi risultati.\n\n**PROTOCOLLO IMPERATIVO:** Controlla maniacalmente le tabelle tecniche delle SLIQ e dei SAL e degli altri documenti coinvolti. \n\n## File attesi\n\nDevi aspettarti i seguenti documenti, non per forza divisi in file diversi:\n- Atto di liquidazione\n- diversi Atti di impegno\n- Quadro Economico\n- Fattura o fatture\n- diverse Proposte di liquidazione del RUP\n- diversi SAL\n- diversi Certificati di pagamento\n- diverse SLIQ\n- Atto di nomina\n- Atti di delega (opzionale)\n- Atto di giroconto (opzionale)\n- Atto di variazione di V livello (opzionale)\n\n## Mappatura documentale\n\nEstrai i documenti e le informazioni come specificato di seguito. Per l'identificativo dei documenti usa esclusivamente la lista fornita: [{{ $json.output.lista_identificativi }}].\n\n## CODICI: PROTOCOLLO OPERATIVO\nSegui scrupolosamente il protocollo operativo per l'estrazione dei seguenti codici. Per semplicità riporto quali sono i documenti da analizzare, ma vai in fondo ai documenti e alle tabelle in essi contenuti\n\n### Numero di Impegno\n\nCerca il numero dell'impegno nei seguenti documenti:\n- Atto di liquidazione\n- Atti di impegno (tutti)\n- tutte le SLIQ e relativi mandati\n\nRiporta tutte le istanze\n\n### Capitolo\n\nCerca il codice del capitolo nei seguenti documenti:\n- Atto di liquidazione\n- Atti di impegno (tutti)\n- tutte le SLIQ e relativi mandati\n\nE' un codice che inizia per 'R' o 'U'\n\nRiporta tutte le istanze\n\n\n### CDR (Centro di Responsabilità)\n\nCerca il numero del CdR nei seguenti documenti:\n- Atto di liquidazione\n- Atti di impegno (tutti)\n- tutte le SLIQ e relativi mandati\n- Atti di giroconto. La presenza di questo file è opzionale. Se c'è, analizzalo in fondo\n\nRiporta tutte le istanze\n\n### Conto finanziario V livello\n\nCerca il codice del Conto V livello nei seguenti documenti:\n- Atto di liquidazione\n- Atti di impegno (tutti)\n- tutte le SLIQ e relativi mandati\n- Atto di variazione di V livello. La presenza di questo file è opzionale. Se c'è, analizzalo in fondo\n\nRiporta tutte le istanze\n\n### Codice intervento\n\nCerca il Codice Intervento nei seguenti documenti:\n- Atto di liquidazione\n- Atti di impegno (tutti)\n- tutte le SLIQ e relativi mandati\n- Tutte le fatture\n- Tutte le Proposte di liquidazione del RUP\n- Tutti i SAL\n- Tutti i Certificati di Pagamento\n\nNei documenti protresti trovare il codice con diversi nomi (es. Codice Intervento, Cod. Int., C.I., CI)\n\nRiporta tutte le istanze\n\n### Codice CUP\n\nCerca il CUP (Codice Unico di Progetto) nei seguenti documenti:\n- Atto di liquidazione\n- Atti di impegno (tutti)\n- tutte le SLIQ e relativi mandati\n- Tutte le fatture\n- Tutte le Proposte di liquidazione del RUP (presenza del codice opzionale)\n- Tutti i SAL (presenza del codice opzionale)\n- Tutti i Certificati di Pagamento (presenza del codice opzionale)\n\nRiporta tutte le istanze\nIn alcuni file la presenza del codice è opzionale, ma tu cercala lo stesso.\n\n### Codice CIG\n\nCerca il CIG (Codice Identificativo Gara) nei seguenti documenti:\n- Atto di liquidazione\n- Atti di impegno (tutti)\n- tutte le SLIQ e relativi mandati\n- Tutte le fatture\n- Tutte le Proposte di liquidazione del RUP (presenza del codice opzionale)\n\nRiporta tutte le istanze\nIn alcuni file la presenza del codice è opzionale, ma tu cercala lo stesso.\n\n### Protocollo Impegno\n\nCerca il protocollo impegno nei seguenti documenti:\n- tutti gli Atto di impegno\n- tutte le Fatture\n- tutte le SLIQ e relativi Mandati\n\nRiporta tutte le istanze\n\n### Codice contratto o Numero di repertorio\n\nCerca il Codice contratto e il Numero di repertorio nei seguenti documenti:\n- Atto di liquidazione\n- tutte le Proposte di liquidazione del RUP\n- tutti i SAL\n- tutti i Certificati di pagamento\n\nL'informazione deve essere citata in tutti i documenti elencati, ma potrebbe comparire a volte come Codice Contratto altre volte come Numero di Repertorio.\nRiporta tutte le istanze riscontrate.\n\n# OUTPUT\n\nPer il tuo output considera esclusivamente il seguente schema JSON. Restituisci quello senza altro testo.\nRispondi esclusivamente con il codice JSON. Non aggiungere testo prima o dopo.\n\n```\njson\n{\n  \"type\": \"object\",\n  \"properties\": {\n    \"output\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"identificativi\": {\n          \"type\": \"object\",\n          \"properties\": {\n            \"cig\": { \"type\": \"array\", \"items\": { \"type\": \"object\", \"properties\": { \"identificativo_documento\": { \"type\": \"string\" }, \"valore\": { \"type\": \"string\" } }, \"required\": [\"identificativo_documento\", \"valore\"] } },\n            \"cup\": { \"type\": \"array\", \"items\": { \"type\": \"object\", \"properties\": { \"identificativo_documento\": { \"type\": \"string\" }, \"valore\": { \"type\": \"string\" } }, \"required\": [\"identificativo_documento\", \"valore\"] } },\n            \"numero_impegno\": { \"type\": \"array\", \"items\": { \"type\": \"object\", \"properties\": { \"identificativo_documento\": { \"type\": \"string\" }, \"valore\": { \"type\": \"string\" } }, \"required\": [\"identificativo_documento\", \"valore\"] } },\n            \"protocollo_impegno\": { \"type\": \"array\", \"items\": { \"type\": \"object\", \"properties\": { \"identificativo_documento\": { \"type\": \"string\" }, \"valore\": { \"type\": \"string\" } }, \"required\": [\"identificativo_documento\", \"valore\"] } },\n            \"codice_intervento_sap\": { \"type\": \"array\", \"items\": { \"type\": \"object\", \"properties\": { \"identificativo_documento\": { \"type\": \"string\" }, \"valore\": { \"type\": \"string\" } }, \"required\": [\"identificativo_documento\", \"valore\"] } },\n            \"capitolo_spesa\": { \"type\": \"array\", \"items\": { \"type\": \"object\", \"properties\": { \"identificativo_documento\": { \"type\": \"string\" }, \"valore\": { \"type\": \"string\" } }, \"required\": [\"identificativo_documento\", \"valore\"] } },\n            \"conto_finanziario_v_livello\": { \"type\": \"array\", \"items\": { \"type\": \"object\", \"properties\": { \"identificativo_documento\": { \"type\": \"string\" }, \"valore\": { \"type\": \"string\" } }, \"required\": [\"identificativo_documento\", \"valore\"] } },\n            \"codice_contratto\": { \"type\": \"array\", \"items\": { \"type\": \"object\", \"properties\": { \"identificativo_documento\": { \"type\": \"string\" }, \"valore\": { \"type\": \"string\" } }, \"required\": [\"identificativo_documento\", \"valore\"] } },\n            \"numero_repertorio\": { \"type\": \"array\", \"items\": { \"type\": \"object\", \"properties\": { \"identificativo_documento\": { \"type\": \"string\" }, \"valore\": { \"type\": \"string\" } }, \"required\": [\"identificativo_documento\", \"valore\"] } },\n            \"cdr\": { \"type\": \"array\", \"items\": { \"type\": \"object\", \"properties\": { \"identificativo_documento\": { \"type\": \"string\" }, \"codice_cdr\": { \"type\": \"string\" }, \"settore\": { \"type\": \"string\" } }, \"required\": [\"identificativo_documento\", \"codice_cdr\", \"settore\"] } }\n          },\n          \"required\": [\"cig\", \"cup\", \"numero_impegno\", \"codice_intervento_sap\", \"capitolo_spesa\", \"conto_finanziario_v_livello\", \"cdr\"]\n        }\n      },\n      \"required\": [\"identificativi\"]\n    }\n  },\n  \"required\": [\"output\"]\n}\n```\n\n# DATI DOCUMENTI:\n\n## Manifesto immagini\n{{ $json.manifesto_immagini }}\n\nNota bene: Le immagini sono allegate a questo prompt esattamente nell'ordine descritto qui sopra.\n\n## TESTO\n{{ JSON.stringify($json.documenti) }}\n\n\n",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        112,
+        576
+      ],
+      "id": "8a14b2c0-110e-4fd0-a7c0-9c5f34548375",
+      "name": "Estrattore Codici"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "numberInputs": 4,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        896,
+        640
+      ],
+      "id": "a87e5382-5f11-43ff-823f-de1189b364c8",
+      "name": "Merge1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Recuperiamo la stringa prodotta dall'AI (adattare il nome del campo se diverso)\nconst rawOutput = $input.first().json.output; \n\nif (!rawOutput) {\n    throw new Error(\"Nessun output ricevuto dal nodo precedente.\");\n}\n\ntry {\n    // 1. Rimuoviamo eventuali blocchi di codice Markdown (```json o ```)\n    // Usiamo una Regex per estrarre tutto ciò che sta tra le parentesi graffe più esterne\n    const jsonMatch = rawOutput.match(/\\{[\\s\\S]*\\}/);\n    \n    if (!jsonMatch) {\n        throw new Error(\"Non è stato possibile trovare un oggetto JSON valido nell'output.\");\n    }\n\n    // 2. Parsiamo la stringa pulita\n    const cleanObject = JSON.parse(jsonMatch[0]);\n\n    // 3. Restituiamo l'oggetto in modo che n8n lo tratti come JSON nativo\n    // Se l'oggetto originale ha già una chiave \"output\", la restituiamo direttamente\n    return cleanObject.output ? cleanObject.output : cleanObject;\n\n} catch (error) {\n    // In caso di errore nel parsing, restituiamo l'errore per il debug\n    return {\n        error: \"Errore durante la pulizia del JSON\",\n        message: error,\n        original_text: rawOutput\n    };\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        512,
+        384
+      ],
+      "id": "9091e5fb-14e8-4e20-89ff-2eccb5320ca2",
+      "name": "Code in JavaScript2"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Recuperiamo la stringa prodotta dall'AI (adattare il nome del campo se diverso)\nconst rawOutput = $input.first().json.output; \n\nif (!rawOutput) {\n    throw new Error(\"Nessun output ricevuto dal nodo precedente.\");\n}\n\ntry {\n    // 1. Rimuoviamo eventuali blocchi di codice Markdown (```json o ```)\n    // Usiamo una Regex per estrarre tutto ciò che sta tra le parentesi graffe più esterne\n    const jsonMatch = rawOutput.match(/\\{[\\s\\S]*\\}/);\n    \n    if (!jsonMatch) {\n        throw new Error(\"Non è stato possibile trovare un oggetto JSON valido nell'output.\");\n    }\n\n    // 2. Parsiamo la stringa pulita\n    const cleanObject = JSON.parse(jsonMatch[0]);\n\n    // 3. Restituiamo l'oggetto in modo che n8n lo tratti come JSON nativo\n    // Se l'oggetto originale ha già una chiave \"output\", la restituiamo direttamente\n    return cleanObject.output ? cleanObject.output : cleanObject;\n\n} catch (error) {\n    // In caso di errore nel parsing, restituiamo l'errore per il debug\n    return {\n        error: \"Errore durante la pulizia del JSON\",\n        message: error,\n        original_text: rawOutput\n    };\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        512,
+        576
+      ],
+      "id": "445683eb-ca8b-4761-ae17-1c247522cb02",
+      "name": "Code in JavaScript3"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Recuperiamo la stringa prodotta dall'AI (adattare il nome del campo se diverso)\nconst rawOutput = $input.first().json.output; \n\nif (!rawOutput) {\n    throw new Error(\"Nessun output ricevuto dal nodo precedente.\");\n}\n\ntry {\n    // 1. Rimuoviamo eventuali blocchi di codice Markdown (```json o ```)\n    // Usiamo una Regex per estrarre tutto ciò che sta tra le parentesi graffe più esterne\n    const jsonMatch = rawOutput.match(/\\{[\\s\\S]*\\}/);\n    \n    if (!jsonMatch) {\n        throw new Error(\"Non è stato possibile trovare un oggetto JSON valido nell'output.\");\n    }\n\n    // 2. Parsiamo la stringa pulita\n    const cleanObject = JSON.parse(jsonMatch[0]);\n\n    // 3. Restituiamo l'oggetto in modo che n8n lo tratti come JSON nativo\n    // Se l'oggetto originale ha già una chiave \"output\", la restituiamo direttamente\n    return cleanObject.output ? cleanObject.output : cleanObject;\n\n} catch (error) {\n    // In caso di errore nel parsing, restituiamo l'errore per il debug\n    return {\n        error: \"Errore durante la pulizia del JSON\",\n        message: error,\n        original_text: rawOutput\n    };\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        512,
+        768
+      ],
+      "id": "aa82d5b8-9038-43d9-8bd3-4249a0221058",
+      "name": "Code in JavaScript4"
+    },
+    {
+      "parameters": {
+        "jsCode": "const inputObj = $input.first().json\n\nconst map_amministrativa = inputObj.mappatura_documentale\nconst anagrafica = inputObj.anagrafica_progetto\nconst registro_firme = inputObj.registro_firme\nconst identificativi = inputObj.identificativi\nconst evidenze_testuali = inputObj.evidenze_testuali\n\nreturn {\n  \"mappatura_documentale\": map_amministrativa,\n  \"anagrafica_progetto\": anagrafica,\n  \"registro_firme\": registro_firme,\n  \"identificativi\": identificativi,\n  \"evidenze_testuali\": evidenze_testuali\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        672
+      ],
+      "id": "27375b17-5d96-4fee-a613-5d3adf8b5811",
+      "name": "Code in JavaScript5"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Recuperiamo la stringa prodotta dall'AI (adattare il nome del campo se diverso)\nconst rawOutput = $input.first().json.output; \n\nif (!rawOutput) {\n    throw new Error(\"Nessun output ricevuto dal nodo precedente.\");\n}\n\ntry {\n    // 1. Rimuoviamo eventuali blocchi di codice Markdown (```json o ```)\n    // Usiamo una Regex per estrarre tutto ciò che sta tra le parentesi graffe più esterne\n    const jsonMatch = rawOutput.match(/\\{[\\s\\S]*\\}/);\n    \n    if (!jsonMatch) {\n        throw new Error(\"Non è stato possibile trovare un oggetto JSON valido nell'output.\");\n    }\n\n    // 2. Parsiamo la stringa pulita\n    const cleanObject = JSON.parse(jsonMatch[0]);\n\n    // 3. Restituiamo l'oggetto in modo che n8n lo tratti come JSON nativo\n    // Se l'oggetto originale ha già una chiave \"output\", la restituiamo direttamente\n    return cleanObject.output ? cleanObject.output : cleanObject;\n\n} catch (error) {\n    // In caso di errore nel parsing, restituiamo l'errore per il debug\n    return {\n        error: \"Errore durante la pulizia del JSON\",\n        message: error,\n        original_text: rawOutput\n    };\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        512,
+        960
+      ],
+      "id": "9ecf9791-bf65-450c-a8b7-69a2c02f43bc",
+      "name": "Code in JavaScript6"
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n\t\"type\": \"object\",\n\t\"properties\": {\n\t\t\"lista_identificativi\": {\n\t\t\t\"type\": \"array\",\n            \"items\": {\n              \"type\": \"string\"\n            }\n\t\t}\n    }\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        -704,
+        1056
+      ],
+      "id": "b517edbc-3fa1-4d25-b04e-1d3b7aa1814d",
+      "name": "Structured Output Parser2"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -560,
+        672
+      ],
+      "id": "88187b27-c677-4a88-a8dd-5030e9b42097",
+      "name": "Merge2"
+    },
+    {
+      "parameters": {
+        "dataToSave": {
+          "values": [
+            {
+              "key": "id_operazione",
+              "value": "={{ $json.id_operazione }}"
+            },
+            {
+              "key": "error_endpoint_url",
+              "value": "={{ $json.error_endpoint_url }}"
+            },
+            {
+              "key": "id_atto",
+              "value": "={{ $json.id_atto }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executionData",
+      "typeVersion": 1.1,
+      "position": [
+        -864,
+        304
+      ],
+      "id": "bdad2faf-30ac-48f4-a1eb-56d47714f706",
+      "name": "Execution Data"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "80d62447-64c5-4a7b-9c13-4993a1c39233",
+              "name": "id_atto",
+              "value": "={{ $json.body.testo }}",
+              "type": "string"
+            },
+            {
+              "id": "6f24fc86-0eb4-46ec-9c45-2e9ab8f1b416",
+              "name": "id_operazione",
+              "value": "={{ $json.body.id_operazione }}",
+              "type": "string"
+            },
+            {
+              "id": "d186a17a-f2bd-41d7-87ea-654efa5560b8",
+              "name": "error_endpoint_url",
+              "value": "={{ $json.body.errorEndpointUrl || '/api/v1/verifica-atti/webhook-error-callback' }}",
+              "type": "string"
+            },
+            {
+              "id": "e8f020b2-ff21-4736-839f-ac3ce0e42935",
+              "name": "success_endpoint_url",
+              "value": "={{ $json.body.successEndpointUrl || '/api/v1/verifica-atti/webhook-callback' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1088,
+        304
+      ],
+      "id": "cdf1e453-d442-4467-81e8-3b33183cba64",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Role: sei un esperto di Ragioneria del Comune di Bologna specializzato sugli atti di lavori pubblici.\n\n# Mission\nIl tuo unico compito è mappare le persone e le imprese. Cerca le nomine del RUP, il Direttore Lavori e chi ha firmato gli atti.\n\n## File attesi\nDevi aspettarti i seguenti documenti, non per forza divisi in file diversi:\n- Atto di liquidazione\n- diversi Atti di impegno\n- Atto di nomina\n- Atti di delega (opzionale)\n\n## Mappatura documentale\n\nEstrai i documenti e le informazioni come specificato di seguito. Per l'identificativo dei documenti usa esclusivamente la lista fornita: [{{ $json.output.lista_identificativi }}].\n\n### Atto di liquidazione\nEstrai le informazioni dall'atto di liquidazione. Riporta l'oggetto del documento, l'intestazione di comparto, la data del documento, il codice CDR (Codice di Responsabilità) e l'importo totale.\n\n### Atti di impegno\n\nDagli atti di impegno estrai l'oggetto, la data e una descrizione del documento (massimo 500 parole).\nL'atto di impegno potrebbe far riferimento a diversi 'Capitoli'. Vanno TASSATIVAMENTE estratti tutti.\nPer ogni capitolo riscontrato, estrai MINUZIOSAMENTE TUTTI i numeri di impegno associati a quel capitolo, con relativa descrizione e codice di Conto Finanziario di V Livello.\n\n## Firmatari\nPer ogni documento estrai il Nome del firmatario e il suo Ruolo (es. Dirigente, Capodipartimento). Se il nome manca, riporta solo il ruolo.\n\n## Imprese\n\nDelle aziende estrai l'Impresa Affidataria e tutte le imprese che sono coinvolte nei documenti. Esplicita se formano una RTI (quindi riporta chi è la mandataria e le mandanti) e chi sono le aziende subappaltatrici.\n\n## Deleghe\n\nCerca attentamente deleghe esplicite nei documenti che incontri. Riporta il documento di partenza (quindi dove viene notificata la delega), chi viene delegato e la motivazione. Se non riscontri nessuna di queste informazioni nei documenti, allora restituisci un array vuoto.\n\n## TOOL:\npuoi contare sui seguenti tool:\n- `tool_cdr_lookup`, specificando il `cdr_code` e la data di riferimento `ref_date` nel formato 'YYYY-MM-DD', per avere informazioni sui CDR che hai incontrato. Per la data usa la data del documento che stai analizzato.\n- `tool_rup_delegation`, specificando il paramentro `operation_code` per avere informazioni sul RUP nominato su un codice intervento.\n\n## REGOLE RIGOROSE:\n- Se un dato manca, usa null.\n- NON inventare nulla.\n\n# OUTPUT\n\nUsa il seguente JSON schema per il tuo output. Restituisci SOLO un json in risposta senza ulteriore testo.\n\n```\njson\n{\n  \"type\": \"object\",\n  \"properties\": {\n    \"output\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"mappatura_documentale\": {\n          \"type\": \"object\",\n          \"description\": \"Contiene tutti i documenti estratti, raggruppati per tipologia funzionale.\",\n          \"properties\": {\n            \"atto_di_liquidazione\": {\n              \"type\": \"object\",\n              \"properties\": {\n                \"identificativo_documento\": { \"type\": \"string\" },\n                \"oggetto\": { \"type\": \"string\", \"description\": \"Descrizione testuale per controllo semantico\" },\n                \"data\": { \"type\": [\"string\", \"null\"] },\n                \"cdr_codice\": { \"type\": [\"string\", \"null\"] },\n                \"importo_totale\": { \"type\": [\"number\", \"null\"] },\n                \"intestazione_comparto\": { \"type\": \"string\" }\n              },\n              \"required\": [\"identificativo_documento\", \"importo_totale\", \"intestazione_comparto\"]\n            },\n            \"atti_amministrativi\": {\n              \"type\": \"object\",\n              \"properties\": {\n                \"impegni\": {\n                  \"type\": \"array\",\n                  \"description\": \"Include determina impegno originaria e atti relativi a riaccertamenti\",\n                  \"items\": {\n                    \"type\": \"object\",\n                    \"properties\": {\n                      \"identificativo_documento\": { \"type\": \"string\" },\n                      \"data\": { \"type\": [\"string\", \"null\"] },\n                      \"descrizione\": { \"type\": \"string\" },\n                      \"impegni\": {\n                        \"type\": \"array\",\n                        \"items\": {\n                          \"type\": \"object\",\n                          \"properties\": {                        \n                            \"codice_capitolo\": { \"type\": \"string\" },\n                            \"numero_impegno\": { \"type\": \"string\" },\n                            \"codice_finanziario_v_livello\": { \"type\": [\"string\", \"null\"] },\n                            \"descrizione\": { \"type\": [\"string\", \"null\"] }\n                          }\n                        }\n                      }\n                    }\n                  }\n                },\n                \"atto_nomina_rup\": {\n                  \"type\": \"object\",\n                  \"properties\": {\n                    \"identificativo_documento\": { \"type\": \"string\" },\n                    \"descrizione\": { \"type\": \"string\" },\n                    \"rup_nominato\": { \"type\": \"string\" }\n                  }\n                },\n                \"deleghe\": {\n                  \"type\": \"array\",\n                  \"items\": {\n                    \"type\": \"object\",\n                    \"properties\": {\n                      \"identificativo_documento\": { \"type\": \"string\" },\n                      \"motivo_delega\": { \"type\": \"string\" },\n                      \"delegato\": { \"type\": \"string\" }\n                    }\n                  }\n                }\n              }\n            }\n          },\n          \"required\": [\"atto_di_liquidazione\", \"atti_amministrativi\"]\n        },\n        \"anagrafica_progetto\": {\n          \"type\": \"object\",\n          \"properties\": {\n            \"rup_in_carica\": { \"type\": [\"string\", \"null\"] },\n            \"direttore_lavori\": { \"type\": [\"string\", \"null\"] },\n            \"impresa_affidataria\": {\n              \"type\": \"object\",\n              \"properties\": {\n                \"denominazione\": { \"type\": \"string\" },\n                \"p_iva\": { \"type\": [\"string\", \"null\"] },\n                \"iban\": { \"type\": [\"string\", \"null\"] },\n                \"is_rti\": { \"type\": \"boolean\" },\n                \"mandataria\": { \"type\": [\"string\", \"null\"] },\n                \"mandanti\": { \"type\": \"array\", \"items\": { \"type\": \"string\" } },\n                \"subappaltatori\": { \"type\": \"array\", \"items\": { \"type\": \"string\" } }\n              }\n            }\n          }\n        },\n        \"registro_firme\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"object\",\n            \"properties\": {\n              \"identificativo_documento\": { \"type\": \"string\" },\n              \"firmatario_nominativo\": { \"type\": [\"string\", \"null\"] },\n              \"firmatario_ruolo\": { \"type\": [\"string\", \"null\"] }\n            },\n            \"required\": [\"identificativo_documento\"]\n          }\n        }\n      },\n      \"required\": [\"mappatura_documentale\", \"anagrafica_progetto\", \"registro_firme\"]\n    }\n  }\n}\n```\n\n# DATI DOCUMENTI:\n\n## Manifesto immagini\n{{ $json.manifesto_immagini }}\n\nNota bene: Le immagini sono allegate a questo prompt esattamente nell'ordine descritto qui sopra.\n\n## TESTO\n{{ JSON.stringify($json.documenti) }}",
+        "options": {
+          "passthroughBinaryImages": true
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        112,
+        384
+      ],
+      "id": "a3f683b1-4c04-416b-b7aa-d8533508fe22",
+      "name": "Estrattore Soggetti e Poteri"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Role: Sei un revisore contabile del Comune di Bologna specializzato sugli atti di lavori pubblici.\n\n# Mission\nIl tuo unico compito è di leggere i documenti e le tabelle allegate, estraendo in modo maniacale gli importi.\n\n## File attesi\nDevi concentrarti sui seguenti documenti, non per forza divisi in file diversi:\n- diverse SLIQ, ognuna potrebbe avere diversi Mandati\n- diverse Fatture\n- Diversi SAL\n- Diversi certificati di pagamento\n- diversi quadri economici\n\n## Mappatura documentale\n\nEstrai i documenti e le informazioni come specificato di seguito. Per l'identificativo dei documenti usa esclusivamente la lista fornita: [{{ $json.output.lista_identificativi }}].\n\n## PROTOCOLLO OPERATIVO\n\nSegui esattamente il seguente protocollo operativo:\n\n### SLIQ\n\nDalle SLIQ estrai:\n- il Numero della SLIQ, inteso come numero liquidazione, unico per ogni SLIQ\n- la determina di liquidazione\n- la data\n- il Numero di Impegno di ogni mandato\n- il Protocollo Impegno di ogni mandato\n- il Capitolo di ogni mandato\n- la lista di fatture citate per ogni mandato e relativo beneficiario\n- l'IBAN di ogni mandato\n- il conto finanziario di V livello in ogni mandato\n- gli importi: \n  - l'importo totale di liquidazione\n  - il totale di ogni mandato / impegno\n  - il totale di ogni fornitore\n  - il totale delle somme detratte (in caso di split payment)\n\nRelativamente al Capitolo, indica se è un Riaccertamento oppure no. Nel primo caso il Capitolo inizia per 'R', nel secondo per 'U'.\n\nSii preciso al centesimo e pignolo su ogni dettaglio.\n\n### Fatture\n\nDalle fatture estrai:\n- Il numero della fattura\n- la data\n- la descrizione della prestazione\n- la lista di impegni citati\n- la denominazione del fornitore\n- la partita iva\n- l'IBAN\n- l'importo imponibile\n- l'importo dell'IVA\n- l'importo lordo\n- il regime fiscale per l'IVA (Split Payment, Reverse Charge, ecc)\n\nSii preciso al centesimo e pignolo su ogni dettaglio.\n\n### SAL\n\nDi ogni SAL concentrati solo su due parti:\n- la parte iniziale, in cui viene riportato il quadro economico (questa parte è opzionale)\n- il riepilogo finale che riguarda il riassunto dei lavori eseguiti e relative detrazioni\n\nDa ogni SAL quindi estrai:\n- gli importi previsti dal quadro economico nella parte iniziale (lavori a misura, a corpo, in economia, il ribasso, oneri/costi della sicurezza e il totale del contratto)\n- gli stessi importi previsti nel SAL, nella parte in basso\nnel riepilogo finale del documento potrebbe esserci la somma del residuo. Se c'è, estraila.\n\nSe presente, riporta anche il contratto o il repertorio.\n\nNel riportare i dati in output sii preciso al centesimo e distingui attentamente tra gli importi indicati come riepilogo iniziale del quadro economico (se presente) e quelli specifici del SAL.\n\nNon inventare cifre. Se non è presente una cifra, riporta 'null' nel tuo output in corrispondenza di quella chiave.\n\n### Certificati di Pagamento\n\nIl certificato va in coppia con il suo SAL. Di solito riporta le stesse informazioni, ma potrebbe omettere le voci relative al quadro economico.\n\nDi ogni certificato di pagamento estrai:\n- il totale delle detrazioni (se presenti)\n- importo residuo (se presente)\n- costi o oneri della sicurezza (se presenti)\n- importo netto (da pagare)\n- l'importo dell'IVA\n- importo netto espresso in lettere\n- se citato riporta inoltre: \n  - il contratto o il repertorio\n  - il totale dell'importo dei lavori\n\nSii preciso al centesimo. Non inventare cifre. Se non è presente una cifra, riporta 'null' nel tuo output in corrispondenza di quella chiave.\n\nL'importo in lettere potrebbe contenere errori. Riporta ESATTAMENTE quello che ritrovi SENZA alcuna correzione o interpretazione.\n\n### Quadro economico\n\n\n\n## REGOLE RIGOROSE:\n- Se un dato manca, usa null.\n- NON inventare nulla.\n- Sii preciso al centesimo\n\n# OUTPUT\n\nUsa il seguente JSON schema per il tuo output. Restituisci SOLO un json in risposta senza ulteriore testo.\n\n```\njson\n{\n  \"type\": \"object\",\n  \"properties\": {\n    \"output\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"mappatura_documentale\": {\n          \"type\": \"object\",\n          \"description\": \"Contiene tutti i documenti estratti, raggruppati per tipologia funzionale.\",\n          \"properties\": {\n            \"documenti_contabili\": {\n              \"type\": \"object\",\n              \"properties\": {\n                \"sliq\": {\n                  \"type\": \"array\",\n                  \"items\": {\n                    \"type\": \"object\",\n                    \"properties\": {\n                      \"identificativo_documento\": { \"type\": \"string\" },\n                      \"numero_sliq\": { \"type\": \"string\" },\n                      \"determina\": { \"type\": \"string\" },\n                      \"data\": { \"type\": \"string\" },\n                      \"importo_totale_liquidazione\": { \"type\": [\"number\", \"null\"] },\n                      \"totale_detrazioni\": { \"type\": [\"number\", \"null\"] },\n                      \"mandati\": {\n                        \"type\": \"array\",\n                        \"items\": {\n                          \"type\": \"object\",\n                          \"properties\": {\n                            \"capitolo\": { \"type\": [\"string\", \"null\"], \"description\": \"Essenziale per verifica 'U' o 'R' riaccertamento dei residui\" },\n                            \"is_riaccertamento\": { \"type\": \"boolean\", \"description\": \"true se e solo se il capitolo inizia per 'R'\" },\n                            \"protocollo_impegno\": { \"type\": [\"string\", \"null\"], \"description\": \"Per verifica DGPRO\" },\n                            \"fatture_citate\": { \"type\": \"array\", \"items\": { \"type\": \"string\" } },\n                            \"importo_totale_fornitore\": { \"type\": [\"number\", \"null\"] },\n                            \"importo_totale_impegno\": { \"type\": [\"number\", \"null\"] },\n                            \"beneficiario\": { \"type\": \"string\"},\n                            \"iban\": { \"type\": \"string\"}\n                          }\n                        }\n                      }\n                    }\n                  }\n                },\n                \"fatture\": {\n                  \"type\": \"array\",\n                  \"items\": {\n                    \"type\": \"object\",\n                    \"properties\": {\n                      \"identificativo_documento\": { \"type\": \"string\" },\n                      \"numero\": { \"type\": \"string\" },\n                      \"data\": { \"type\": [\"string\", \"null\"] },\n                      \"descrizione_prestazione\": { \"type\": [\"string\", \"null\"] },\n                      \"impegni_citati\": { \n                                \"type\": \"array\", \n                                \"items\": { \"type\": \"string\" },\n                                \"description\": \"Lista dei numeri di determine/impegni (es. DDPRO...) citati esplicitamente all'interno della fattura\"\n                            },\n                      \"denominazione_fornitore\": { \"type\": [\"string\", \"null\"] },\n                      \"partita_iva\": { \"type\": [\"string\", \"null\"] },\n                      \"iban\": { \"type\": [\"string\", \"null\"] },\n                      \"importo_imponibile\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_iva\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_lordo\": { \"type\": [\"number\", \"null\"] },\n                      \"regime_fiscale_iva\": { \"type\": \"string\" }\n                    },\n                    \"required\": [\"identificativo_documento\", \"numero\", \"importo_imponibile\" ]\n                  }\n                }\n              }\n            },\n            \"documenti_tecnici\": {\n              \"type\": \"object\",\n              \"properties\": {\n                \"sal\": {\n                  \"type\": \"array\",\n                  \"items\": {\n                    \"type\": \"object\",\n                    \"properties\": {\n                      \"identificativo_documento\": { \"type\": \"string\" },\n                      \"numero_sal\": { \"type\": \"string\" },\n                      \"data\": { \"type\": [\"string\", \"null\"] },\n                      \"n_contratto_o_repertorio\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_contratto\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_lavori_quadro_economico_sal\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_lavori_a_misura_quadro_economico_sal\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_lavori_a_corpo_quadro_economico_sal\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_lavori_in_economia_quadro_economico_sal\": { \"type\": [\"number\", \"null\"] },\n                      \"ribasso_quadro_economico_sal\": { \"type\": [\"number\", \"null\"] },\n                      \"oneri_sicurezza_quadro_economico_sal\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_lavori_sal\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_lavori_a_misura_sal\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_lavori_a_corpo_sal\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_lavori_in_economia_sal\": { \"type\": [\"number\", \"null\"] },\n                      \"oneri_sicurezza_sal\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_residuo_sal\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_totale_sal\": { \"type\": [\"number\"] }\n                    }\n                  }\n                },\n                \"certificati_pagamento\": {\n                  \"type\": \"array\",\n                  \"items\": {\n                    \"type\": \"object\",\n                    \"properties\": {\n                      \"identificativo_documento\": { \"type\": \"string\" },\n                      \"numero\": { \"type\": \"string\" },\n                      \"n_contratto_o_repertorio\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_contratto\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_lavori_quadro_economico_cert_pag\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_lavori_a_misura_quadro_economico_cert_pag\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_lavori_a_corpo_quadro_economico_cert_pag\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_lavori_in_economia_quadro_economico_cert_pag\": { \"type\": [\"number\", \"null\"] },\n                      \"ribasso_quadro_economico_cert_pag\": { \"type\": [\"number\", \"null\"] },\n                      \"oneri_sicurezza_quadro_economico_cert_pag\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_lavori_cert_pag\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_lavori_a_misura_cert_pag\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_lavori_a_corpo_cert_pag\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_lavori_in_economia_cert_pag\": { \"type\": [\"number\", \"null\"] },\n                      \"oneri_sicurezza_cert_pag\": { \"type\": [\"number\", \"null\"] },\n                      \"totale_detrazioni_cert_pag\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_lordo_cert_pag\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_netto_cert_pag\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_netto_in_lettere_cert_pag\": { \"type\": [\"string\", \"null\"] },\n                      \"importo_iva_cert_pag\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_residuo_cert_pag\": { \"type\": [\"number\", \"null\"] }\n                    }\n                  }\n                },\n                \"quadri_economici\": {\n                  \"type\": \"array\",\n                  \"items\": {\n                    \"type\": \"object\",\n                    \"properties\": {\n                      \"identificativo_documento\": { \"type\": \"string\" },\n                      \"data\": { \"type\": [\"string\", \"null\"] },\n                      \"importo_lavori\": { \"type\": [\"number\", \"null\"] },\n                      \"oneri_sicurezza\": { \"type\": [\"number\", \"null\"] }\n                    }\n                  }\n                }\n              }\n            }\n          },\n          \"required\": [\"documenti_contabili\", \"documenti_tecnici\"]\n        }\n      },\n      \"required\": [\"mappatura_documentale\"]\n    }\n  },\n  \"required\": [\"output\"]\n}\n```\n\n# DATI DOCUMENTI:\n\n## Manifesto immagini\n{{ $json.manifesto_immagini }}\n\nNota bene: Le immagini sono allegate a questo prompt esattamente nell'ordine descritto qui sopra.\n\n## TESTO\n{{ JSON.stringify($json.documenti) }}",
+        "options": {
+          "passthroughBinaryImages": true
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        112,
+        768
+      ],
+      "id": "e15f1820-2aab-4cfd-b5bd-222652b60aa2",
+      "name": "Estrattore Contabile"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Role: Agente Specialista in Estrazione Dati per la Contabilità Pubblica (Comune di Bologna).\n\n# MISSIONE\nAnalizza il pacchetto di file forniti (testi estratti dai documenti di liquidazione). Devi mappare l'intero ecosistema della pratica senza formulare giudizi, agendo con estrema pignoleria.\n\n## File attesi\n\nDevi aspettarti i seguenti documenti, non per forza divisi in file diversi:\n- Atto di liquidazione\n- diversi Atti di impegno\n- Quadro Economico\n- Fattura o fatture\n- diverse Proposte di liquidazione del RUP\n- diversi SAL\n- diversi Certificati di pagamento\n- diverse SLIQ\n- Atto di nomina\n- Atti di delega (opzionale)\n- Atto di giroconto (opzionale)\n- Atto di variazione di V livello (opzionale)\n\n## Mappatura documentale\n\nEstrai i documenti e le informazioni come specificato di seguito. Per l'identificativo dei documenti usa esclusivamente la lista fornita: [{{ $json.output.lista_identificativi }}].\n\nOgni evidenza testuale deve riportare uno snippet testuale (max 500 caratteri) e il relativo documento in cui si verifica.\n\n**NB:** Lo snippet serve per motivare la discrepanza/variazione, quindi deve essere comprensibile ad una analisi successiva. Tu ora NON GIUDICARE, riporta il testo utile.\n\n### VARIANTI (CRITICO):\nEstrai informazioni in ognuno deei seguenti casi:\n- Per ogni modifica contrattuale\n- variante citata (es. ex art. 106 o 120)\n- una motivazione per variazione di importo\n- riferimento a Art Bonus\n- riferimento a Decreto Aiuti\n- ogni giustificazione valida di nota.\n\n### Fattura\n\nCerca le citazioni delle determine all'interno della causale della fattura\n\n### Identificativi\n\nConcentrati su un documenti per volta. Se noti discrepanze tra gli identificativi (CIG, CUP, CDR, Numero di Impegno, Protocollo impegno, contratto o repertorio) nei vari documenti, DEVI estrarre uno snippet testuale che ne spieghi la motivazione (se presente nel testo dell'atto di liquidazione).\n\n# OUTPUT\n\nPer il tuo output considera esclusivamente il seguente schema JSON. Restituisci quello senza altro testo.\nRispondi esclusivamente con il codice JSON. Non aggiungere testo prima o dopo.\n\n```\njson\n{\n  \"type\": \"object\",\n  \"properties\": {\n    \"output\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"evidenze_testuali\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"object\",\n            \"properties\": {\n              \"snippet\": { \"type\": \"string\" },\n              \"tipo_evidenza\": { \"type\": \"string\", \"enum\": [\"variante\", \"discrepanza_codici\", \"altro\"] },\n              \"identificativo_documento\": { \"type\": \"string\" }\n            },\n            \"required\": [\"snippet\", \"identificativo_documento\"]\n          }\n        }\n      },\n      \"required\": [\"identificativi\"]\n    }\n  },\n  \"required\": [\"output\"]\n}\n```\n\n# DATI DOCUMENTI:\n\n## Manifesto immagini\n{{ $json.manifesto_immagini }}\n\nNota bene: Le immagini sono allegate a questo prompt esattamente nell'ordine descritto qui sopra.\n\n## TESTO\n{{ JSON.stringify($json.documenti) }}\n",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        112,
+        960
+      ],
+      "id": "c012d9d5-39f8-4c6a-9afe-5183a63beaf3",
+      "name": "Estrattore Evidenze testuali"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Sei il Responsabile della Tracciabilità Contabile del Comune di Bologna. Il tuo compito è incrociare i codici identificativi tra gli atti di spesa e i documenti di pagamento.\n\n## Protocollo operativo\nSegui rigidamente il seguente protocollo operativo:\n1. **Codice Intervento**: \n    * Verifica che il codice sia identico tra i documenti nella sezione `identificativi.codice_intervento_sap`. Il valore di rifimento è quello dell'Atto di Impegno.\n    * **Controllo Presenza**: Deve essere presente in tutti i documenti (Atto di Liquidazione, Proposta di Liquidazione, Tutti gli Atti di Impegno, tutti i SAL, tutti i Certificati di pagamento, tutte le SLIQ, tutte le fatture). Se manca in uno di questi, segnala 'ERRORE'; fanno eccezione le fatture, dove se manca va segnalato un esito \"WARNING\". Il codice deve avere lo stesso valore nei documenti, ma potrebbe chiamarsi diversamente (es. Cod. Int., C.I.).\n\n2. **CUP**: \n    * Verifica la corrispondenza tra i documenti in `identificativi.cup`. Il valore di rifimento CUP è quello degli Atti di Impegno. Devono essere tutti uguali.\n    * **Confronto SLIQ**: Se il codice in SLIQ è diverso da quello dell'Impegno, cerca nelle `evidenze_testuali` della Liquidazione una spiegazione.\n    * **Confronto in documenti**: \n      * Deve essere presente e coerente nei seguenti documenti: Atto di liquidazione, Atti di impegno, SLIQ. Se non c'è, segnala ERRORE;\n      * Può essere presente nelle Proposte di Liquidazione, nei SAL e nei Certificati di Pagamento. Se c'è verifica la coerenza e segna l'esito. Se non c'è riporta comunque l'informazione\n      * Deve essere presente in Fattura. Se non c'è e non hai nessuna motivazione nelle evidenze testuali segnala 'ERRORE' e richiedi l'acquisizione di una PEC di rettifica dal settore proponente.\n    * **Sentenza CUP**: \n        * Diversi + Nessuna spiegazione = 'ERRORE'.\n        * Diversi + Spiegazione trovata = 'WARNING' (richiede verifica umana).\n\n3. **CIG**: \n    * Verifica la corrispondenza tra i documenti in `identificativi.cig`. Il valore di rifimento di CIG è quello degli Atti di Impegno. Devono essere tutti uguali.\n    * **Confronto SLIQ**: Se il codice in SLIQ è diverso da quello dell'Impegno, cerca nelle `evidenze_testuali` della Liquidazione una spiegazione.\n    * **Confronto in documenti**: \n      * Deve essere presente e coerente nei seguenti documenti: Atto di liquidazione, Atti di impegno, SLIQ. Se non c'è, segnala ERRORE;\n      * Può essere presente nelle Proposte di Liquidazione, nei SAL e nei Certificati di Pagamento. Se c'è verifica la coerenza e segna l'esito. Se non c'è riporta comunque l'informazione\n      * Deve essere presente in Fattura. Se non c'è e non hai nessuna motivazione nelle evidenze testuali segnala 'ERRORE' e richiedi l'acquisizione di una PEC di rettifica dal settore proponente.\n    * **Sentenza CIG**: \n        * Diversi + Nessuna spiegazione = 'ERRORE'.\n        * Diversi + Spiegazione trovata = 'WARNING' (richiede verifica umana).\n\n4. **Protocollo Impegno**:\n    * Verifica che il numero DDPRO dell'Impegno coincida tra SLIQ e Atto di Impegno\n    * **Caso Riaccertamento**: Se i numeri non tornano, verifica se negli snippet della SLIQ (non della liquidazione) è citata una 'Delibera di Riaccertamento'. Se presente e coerente, scrivi 'VALIDATO'.\n    * **Verifica Fattura**: L'impegno deve essere citato in fattura, quindi controlla che il codice dell'atto sia nelle fatture riportate nel JSON (campo `documenti_contabili`->`fatture`). Se manca, scrivi 'WARNING' e suggerisci l'acquisizione di una PEC di correzione.\n\n\n5. **Codice Contratto**: \n    * Verificare la coerenza del codice nei documenti in cui è riportato (riferimento: `identificativi.codice_contratto`. Potrebbe essere riportato a volte il numero del contratto e altre volte il numero di repertorio. CI deve essere una informazione che lega i due numeri.\n\n## Output\n\nL'oggetto restituito deve contenere i seguenti valori nei campi: `categoria`: \"Validazione codici\", `esito_globale`: [\"VALIDATO\", \"NON VALIDATO\", \"WARNING\"] e un array `controlli`.\n\n**REGOLA PER LA CITAZIONE DEI DOCUMENTI**: Per incrociare i dati tra i vari rami del JSON e per citare i documenti nel tuo output finale, devi utilizzare ESCLUSIVAMENTE il valore presente nel campo `identificativo_documento`. Questo campo contiene proprio il nome esatto e comprensibile (es. \"DDPRO 308/2026\", \"Fattura 2601000001\"). Inserisci questi valori nell'array `documenti_coinvolti`.\n\n**REGOLA FONDAMENTALE (Razionale di verifica)**: Per ogni oggetto all'interno dell'array `controlli`, PRIMA di dichiarare il campo `esito`, devi **obbligatoriamente** compilare il campo testuale `razionale_di_verifica`. In questo campo spiega il tuo ragionamento logico:\n1. Quali identificativi hai letto e da quali documenti (es. \"Ho letto il CIG X dalla Fattura Y\").\n2. Quale confronto hai effettuato (es. \"Il CIG coincide con quello dell'Atto Z\").\n3. Quale regola del tuo protocollo hai applicato per arrivare alla decisione.\n4. L'esito dedotto dalla regola applicata.\n\nSolo dopo aver scritto il razionale, compila il campo `esito`.\n\n## INPUT\n\n{{ JSON.stringify($json) }}\n",
+        "hasOutputParser": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1504,
+        288
+      ],
+      "id": "0ab5161f-ec45-4609-bdb7-1101cbb3e08d",
+      "name": "Validatore Codici"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Sei il Responsabile della Validazione Soggetti e Poteri del Comune di Bologna.\nLa tua missione è verificare la legittimità della firma dell'atto di liquidazione.\n\n## Protocollo Operativo\nSegui rigorosamente i seguenti controlli:\n* **Verifica Firmatario**: Controlla la corrispondenza tra firmatario e CDR e, in caso negativo, cerca un atto di delega connesso all'atto di liquidazione, controllandolo per confermare il potere di firma del delegato. Verificare inoltre la coerenza tra la nomina sindacale del firmatario dell'atto e il comparto organizzativo dell'intestatario dell'atto. Se non coerenti, cercare una delega nel campo `evidenze_testuali` o `atti_amministrativi.deleghe`. Usa il `tool_cdr_lookup`, specificando il `cdr_code` e la data di riferimento `ref_date` nel formato 'YYYY-MM-DD', per avere informazioni sui CDR che hai incontrato. Per la data usa la data del documento che stai analizzato.\n  - Devi verificare i seguenti documenti: Atto di liquidazione, SLIQ, Atti di delega (se presenti)\n\n* **Verifica RUP**: Usa il `tool_rup_delegation` usando il codice intervento (parametro `operation_code`). Verifica se il RUP citato nell'atto coincide con quello ufficiale nominato nell'atto di nomina. \n  - Devi assicurarti di questo sui seguenti documenti: Atto di liquidazione, Proposta di liquidazione del RUP, SAL, Certificato di pagamento, Atto di nomina\n    * **Controllo Semantico**: Se trovi una descrizione del codice, verifica che sia coerente con l'oggetto dell'atto. In caso di dubbi, scrivi 'WARNING'. Per accedere alla descrizione dell'intervento puoi usare il tool `tool_rup_delegation` specificando il parametro `operation_code` con il valore del Codice Intervento.\n\n* **Firmatario di Proposta di liquidazione, Certificato e SAL**: Verifica chi ha firmato i documenti e se poteva farlo.\n  - Verifica i seguenti documenti: Proposta di liquidazione del RUP, SAL, Certificato di pagamento, Atto di nomina\n\n* **Verifica beneficiari**: Verifica che Denominazione, Partita IVA e IBAN presenti nella Fattura coincidano esattamente con quelli presenti in `anagrafica_progetto.impresa_affidataria` o nei subappaltatori. In caso negativo, emetti WARNING.\n\nSentenza: Se tutto coincide scrivi 'VALIDATO'. Se ci sono discrepanze non spiegate da deleghe, scrivi 'NON VALIDATO' e specifica il motivo.\n\n## Output\n\nL'oggetto restitui deve contenere i seguenti valori nei campi: `categoria`: \"Validazione soggetti e poteri\", `esito_globale`: [\"VALIDATO\", \"NON VALIDATO\", \"WARNING\"] e un array `controlli`.\n\n**REGOLA PER LA CITAZIONE DEI DOCUMENTI**: Per incrociare i dati tra i vari rami del JSON e per citare i documenti nel tuo output finale, devi utilizzare ESCLUSIVAMENTE il valore presente nel campo `identificativo_documento`. Questo campo contiene proprio il nome esatto e comprensibile (es. \"DDPRO 308/2026\", \"Fattura 2601000001\"). Inserisci questi valori nell'array `documenti_coinvolti`.\n\n**REGOLA FONDAMENTALE (Razionale di verifica)**: Per ogni oggetto all'interno dell'array `controlli`, PRIMA di dichiarare il campo `esito`, devi **obbligatoriamente** compilare il campo testuale `razionale_di_verifica`. In questo campo spiega il tuo ragionamento logico:\n1. Quali identificativi hai letto e da quali documenti (es. \"Ho letto il CIG X dalla Fattura Y\").\n2. Quale confronto hai effettuato (es. \"Il CIG coincide con quello dell'Atto Z\").\n3. Quale regola del tuo protocollo hai applicato per arrivare alla decisione.\n4. L'esito dedotto dalla regola applicata.\n\nSolo dopo aver scritto il razionale, compila il campo `esito`.\n\n\n## Input\n\n{{ JSON.stringify($json) }}",
+        "hasOutputParser": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1504,
+        480
+      ],
+      "id": "a38485e2-f4ef-45b4-8ffc-e742c9b4559d",
+      "name": "Validatore Soggetti e Poteri"
+    }
+  ],
+  "pinData": {
+    "Estrattore identificativi": [
+      {
+        "json": {
+          "output": {
+            "lista_identificativi": [
+              "Fattura 2601000001",
+              "DDPRO 2434/2024",
+              "DDPRO 18078/2024",
+              "DDPRO 18556/2025",
+              "DDPRO 19932/2025",
+              "DDPRO 308/2026",
+              "Liquidazione 726000268",
+              "Nomine e conferme RUP 1° Adeguamento 2024",
+              "Fattura 2501000302",
+              "Stato Avanzamento Lavori N. 4",
+              "Certificato di Pagamento N. 3",
+              "Stato Avanzamento Lavori N. 3",
+              "Certificato di Pagamento N. 4",
+              "Proposta di Liquidazione SAL 03",
+              "Proposta di Liquidazione SAL 04"
+            ]
+          }
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "Estrattore Codici": [
+      {
+        "json": {
+          "output": "```json\n{\n  \"output\": {\n    \"identificativi\": {\n      \"cig\": [\n        {\n          \"identificativo_documento\": \"Fattura 2601000001\",\n          \"valore\": \"B3F71C0F5B\"\n        },\n        {\n          \"identificativo_documento\": \"Fattura 2601000001\",\n          \"valore\": \"B3F71C0F5B\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18078/2024\",\n          \"valore\": \"B3F71C0F5B\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18078/2024\",\n          \"valore\": \"B3F71C0F5B\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18078/2024\",\n          \"valore\": \"B3F71C0F5B\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18078/2024\",\n          \"valore\": \"B3F71C0F5B\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18078/2024\",\n          \"valore\": \"B3F71C0F5B\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18078/2024\",\n          \"valore\": \"B3F71C0F5B\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18078/2024\",\n          \"valore\": \"B3F71C0F5B\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 19932/2025\",\n          \"valore\": \"B3F71C0F5B\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 19932/2025\",\n          \"valore\": \"B3F71C0F5B\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 19932/2025\",\n          \"valore\": \"B3F71C0F5B\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 19932/2025\",\n          \"valore\": \"B3F71C0F5B\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 19932/2025\",\n          \"valore\": \"B3F71C0F5B\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 308/2026\",\n          \"valore\": \"B3F71C0F5B\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 308/2026\",\n          \"valore\": \"B3F71C0F5B\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 308/2026\",\n          \"valore\": \"B3F71C0F5B\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 308/2026\",\n          \"valore\": \"B3F71C0F5B\"\n        },\n        {\n          \"identificativo_documento\": \"Liquidazione 726000268\",\n          \"valore\": \"B3F71C0F5B\"\n        },\n        {\n          \"identificativo_documento\": \"Liquidazione 726000268\",\n          \"valore\": \"B3F71C0F5B\"\n        },\n        {\n          \"identificativo_documento\": \"Liquidazione 726000268\",\n          \"valore\": \"B3F71C0F5B\"\n        },\n        {\n          \"identificativo_documento\": \"Liquidazione 726000268\",\n          \"valore\": \"B3F71C0F5B\"\n        },\n        {\n          \"identificativo_documento\": \"Fattura 2501000302\",\n          \"valore\": \"B3F71C0F5B\"\n        },\n        {\n          \"identificativo_documento\": \"Fattura 2501000302\",\n          \"valore\": \"B3F71C0F5B\"\n        },\n        {\n          \"identificativo_documento\": \"Stato Avanzamento Lavori N. 4\",\n          \"valore\": \"B3F71C0F5B\"\n        },\n        {\n          \"identificativo_documento\": \"Proposta di Liquidazione SAL 03\",\n          \"valore\": \"B3F71C0F5B\"\n        },\n        {\n          \"identificativo_documento\": \"Stato Avanzamento Lavori N. 3\",\n          \"valore\": \"B3F71C0F5B\"\n        },\n        {\n          \"identificativo_documento\": \"Proposta di Liquidazione SAL 04\",\n          \"valore\": \"B3F71C0F5B\"\n        }\n      ],\n      \"cup\": [\n        {\n          \"identificativo_documento\": \"Fattura 2601000001\",\n          \"valore\": \"F32F24000040006\"\n        },\n        {\n          \"identificativo_documento\": \"Fattura 2601000001\",\n          \"valore\": \"F32F24000040006\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18078/2024\",\n          \"valore\": \"F32F24000040006\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18078/2024\",\n          \"valore\": \"F32F24000040006\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18078/2024\",\n          \"valore\": \"F32F24000040006\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18078/2024\",\n          \"valore\": \"F32F24000040006\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18078/2024\",\n          \"valore\": \"F32F24000040006\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18078/2024\",\n          \"valore\": \"F32F24000040006\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18078/2024\",\n          \"valore\": \"F32F24000040006\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"F32F24000040006\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"F32F24000040006\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"F32F24000040006\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"F32F24000040006\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"F32F24000040006\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"F32F24000040006\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"F32F24000040006\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"F32F24000040006\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"F32F24000040006\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"F32F24000040006\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"F32F24000040006\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"F32F24000040006\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"F32F24000040006\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"F32F24000040006\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"F32F24000040006\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"F32F24000040006\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"F32F24000040006\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 19932/2025\",\n          \"valore\": \"F32F24000040006\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 19932/2025\",\n          \"valore\": \"F32F24000040006\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 19932/2025\",\n          \"valore\": \"F32F24000040006\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 19932/2025\",\n          \"valore\": \"F32F24000040006\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 19932/2025\",\n          \"valore\": \"F32F24000040006\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 19932/2025\",\n          \"valore\": \"F32F24000040006\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 19932/2025\",\n          \"valore\": \"F32F24000040006\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 19932/2025\",\n          \"valore\": \"F32F24000040006\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 308/2026\",\n          \"valore\": \"F32F24000040006\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 308/2026\",\n          \"valore\": \"F32F24000040006\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 308/2026\",\n          \"valore\": \"F32F24000040006\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 308/2026\",\n          \"valore\": \"F32F24000040006\"\n        },\n        {\n          \"identificativo_documento\": \"Liquidazione 726000268\",\n          \"valore\": \"F32F24000040006\"\n        },\n        {\n          \"identificativo_documento\": \"Liquidazione 726000268\",\n          \"valore\": \"F32F24000040006\"\n        },\n        {\n          \"identificativo_documento\": \"Liquidazione 726000268\",\n          \"valore\": \"F32F24000040006\"\n        },\n        {\n          \"identificativo_documento\": \"Liquidazione 726000268\",\n          \"valore\": \"F32F24000040006\"\n        },\n        {\n          \"identificativo_documento\": \"Fattura 2501000302\",\n          \"valore\": \"F32F24000040006\"\n        },\n        {\n          \"identificativo_documento\": \"Fattura 2501000302\",\n          \"valore\": \"F32F24000040006\"\n        },\n        {\n          \"identificativo_documento\": \"Stato Avanzamento Lavori N. 4\",\n          \"valore\": \"F32F24000040006\"\n        },\n        {\n          \"identificativo_documento\": \"Stato Avanzamento Lavori N. 3\",\n          \"valore\": \"F32F24000040006\"\n        },\n        {\n          \"identificativo_documento\": \"Proposta di Liquidazione SAL 03\",\n          \"valore\": \"F32F24000040006\"\n        },\n        {\n          \"identificativo_documento\": \"Proposta di Liquidazione SAL 04\",\n          \"valore\": \"F32F24000040006\"\n        }\n      ],\n      \"numero_impegno\": [\n        {\n          \"identificativo_documento\": \"DDPRO 18078/2024\",\n          \"valore\": \"0324007414\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18078/2024\",\n          \"valore\": \"0324007415\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18078/2024\",\n          \"valore\": \"0324008706\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18078/2024\",\n          \"valore\": \"0324008707\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18078/2024\",\n          \"valore\": \"0324008708\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"324007416\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"0325000946\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"0325000946\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"0325001290\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"0325001291\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"0325001292\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"0325004600\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"0325004601\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"0325004688\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"0325004689\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"0325004778\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"0325004779\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"0325004780\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"0325004781\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"0326000587\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"0425000104\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"0325009197\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"0325009198\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"0325009199\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"0325009219\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"0325009220\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"0325009221\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"0325009222\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"0325009223\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 19932/2025\",\n          \"valore\": \"0325009479\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 19932/2025\",\n          \"valore\": \"0325009480\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 19932/2025\",\n          \"valore\": \"0325009481\"\n        },\n        {\n          \"identificativo_documento\": \"Liquidazione 726000268\",\n          \"valore\": \"325002976\"\n        },\n        {\n          \"identificativo_documento\": \"Liquidazione 726000268\",\n          \"valore\": \"325009199\"\n        },\n        {\n          \"identificativo_documento\": \"Liquidazione 726000268\",\n          \"valore\": \"325009479\"\n        },\n        {\n          \"identificativo_documento\": \"Liquidazione 726000268\",\n          \"valore\": \"325009480\"\n        }\n      ],\n      \"protocollo_impegno\": [\n        {\n          \"identificativo_documento\": \"Liquidazione 726000268\",\n          \"valore\": \"DGPRO42 / 2025\"\n        },\n        {\n          \"identificativo_documento\": \"Liquidazione 726000268\",\n          \"valore\": \"DDPRO18556 / 2025\"\n        },\n        {\n          \"identificativo_documento\": \"Liquidazione 726000268\",\n          \"valore\": \"DDPRO19932 / 2025\"\n        },\n        {\n          \"identificativo_documento\": \"Liquidazione 726000268\",\n          \"valore\": \"DDPRO19932 / 2025\"\n        }\n      ],\n      \"codice_intervento_sap\": [\n        {\n          \"identificativo_documento\": \"Fattura 2601000001\",\n          \"valore\": \"6877\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18078/2024\",\n          \"valore\": \"6877\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18078/2024\",\n          \"valore\": \"6877\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18078/2024\",\n          \"valore\": \"6877\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18078/2024\",\n          \"valore\": \"6877\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18078/2024\",\n          \"valore\": \"6877\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18078/2024\",\n          \"valore\": \"6877\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18078/2024\",\n          \"valore\": \"6877\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18078/2024\",\n          \"valore\": \"6877\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"6877\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"6877\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"6877\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"6877\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"6877\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"6877\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"6877\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"6877\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"6877\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"6877\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"6877\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"6877\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"6877\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"6877\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"6877\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"6877\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"6877\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"6877\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"6877\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"6877\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"6877\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"6877\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"6877\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 19932/2025\",\n          \"valore\": \"6877\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 19932/2025\",\n          \"valore\": \"6877\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 19932/2025\",\n          \"valore\": \"6877\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 19932/2025\",\n          \"valore\": \"6877\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 19932/2025\",\n          \"valore\": \"6877\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 19932/2025\",\n          \"valore\": \"6877\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 19932/2025\",\n          \"valore\": \"6877\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 19932/2025\",\n          \"valore\": \"6877\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 308/2026\",\n          \"valore\": \"6877\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 308/2026\",\n          \"valore\": \"6877\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 308/2026\",\n          \"valore\": \"6877\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 308/2026\",\n          \"valore\": \"6877\"\n        },\n        {\n          \"identificativo_documento\": \"Liquidazione 726000268\",\n          \"valore\": \"6877\"\n        },\n        {\n          \"identificativo_documento\": \"Liquidazione 726000268\",\n          \"valore\": \"6877\"\n        },\n        {\n          \"identificativo_documento\": \"Liquidazione 726000268\",\n          \"valore\": \"6877\"\n        },\n        {\n          \"identificativo_documento\": \"Liquidazione 726000268\",\n          \"valore\": \"6877\"\n        },\n        {\n          \"identificativo_documento\": \"Nomine e conferme RUP 1° Adeguamento 2024\",\n          \"valore\": \"6877\"\n        },\n        {\n          \"identificativo_documento\": \"Nomine e conferme RUP 1° Adeguamento 2024\",\n          \"valore\": \"6877\"\n        },\n        {\n          \"identificativo_documento\": \"Fattura 2501000302\",\n          \"valore\": \"6877\"\n        },\n        {\n          \"identificativo_documento\": \"Stato Avanzamento Lavori N. 4\",\n          \"valore\": \"6877\"\n        },\n        {\n          \"identificativo_documento\": \"Certificato di Pagamento N. 3\",\n          \"valore\": \"6877\"\n        },\n        {\n          \"identificativo_documento\": \"Stato Avanzamento Lavori N. 3\",\n          \"valore\": \"6877\"\n        },\n        {\n          \"identificativo_documento\": \"Certificato di Pagamento N. 4\",\n          \"valore\": \"6877\"\n        },\n        {\n          \"identificativo_documento\": \"Proposta di Liquidazione SAL 03\",\n          \"valore\": \"6877\"\n        },\n        {\n          \"identificativo_documento\": \"Proposta di Liquidazione SAL 03\",\n          \"valore\": \"6877\"\n        },\n        {\n          \"identificativo_documento\": \"Proposta di Liquidazione SAL 04\",\n          \"valore\": \"6877\"\n        },\n        {\n          \"identificativo_documento\": \"Proposta di Liquidazione SAL 04\",\n          \"valore\": \"6877\"\n        }\n      ],\n      \"capitolo_spesa\": [\n        {\n          \"identificativo_documento\": \"DDPRO 18078/2024\",\n          \"valore\": \"U72385-000\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18078/2024\",\n          \"valore\": \"U72145-000\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18078/2024\",\n          \"valore\": \"U72145-000\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18078/2024\",\n          \"valore\": \"U72385-000\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"U72385-000\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"U72385-000\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"U72385-000\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"U72385-000\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"U72385-000\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"U72385-000\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"U72385-000\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"U72385-000\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"U72385-000\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"U72385-000\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"U72385-000\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"U72385-000\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"U72385-000\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"U72385-000\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"U72385-000\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"U71425-000\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 19932/2025\",\n          \"valore\": \"U71425-000\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 19932/2025\",\n          \"valore\": \"U71420-000\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 19932/2025\",\n          \"valore\": \"U71420-000\"\n        },\n        {\n          \"identificativo_documento\": \"Liquidazione 726000268\",\n          \"valore\": \"R72145-000\"\n        },\n        {\n          \"identificativo_documento\": \"Liquidazione 726000268\",\n          \"valore\": \"U71425-000\"\n        },\n        {\n          \"identificativo_documento\": \"Liquidazione 726000268\",\n          \"valore\": \"U71425-000\"\n        },\n        {\n          \"identificativo_documento\": \"Liquidazione 726000268\",\n          \"valore\": \"U71420-000\"\n        }\n      ],\n      \"conto_finanziario_v_livello\": [\n        {\n          \"identificativo_documento\": \"DDPRO 18078/2024\",\n          \"valore\": \"U.2.02.01.10.999\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18078/2024\",\n          \"valore\": \"U.2.02.01.10.999\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18078/2024\",\n          \"valore\": \"U.2.02.01.10.999\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"U.2.02.03.05.001\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"U.2.02.03.05.001\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"U.2.02.01.10.999\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"U.2.02.01.10.999\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"U.2.02.01.10.999\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"U.2.02.01.10.999\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"U.2.02.01.10.999\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"U.2.02.01.10.999\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"U.2.02.01.10.999\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"U.2.02.01.10.999\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"U.2.02.03.05.001\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"U.2.02.03.05.001\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"U.2.02.03.05.001\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"U.2.02.03.05.001\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"U.2.02.01.10.999\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"U.2.02.01.10.999\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"U.2.02.01.10.999\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"U.2.02.03.05.001\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"U.2.02.03.05.001\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"U.2.02.03.05.001\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"U.2.02.03.05.001\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"U.2.02.03.05.001\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 19932/2025\",\n          \"valore\": \"U.2.02.01.10.999\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 19932/2025\",\n          \"valore\": \"U.2.02.01.10.999\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 19932/2025\",\n          \"valore\": \"U.2.02.01.10.999\"\n        },\n        {\n          \"identificativo_documento\": \"Liquidazione 726000268\",\n          \"valore\": \"2020110999\"\n        },\n        {\n          \"identificativo_documento\": \"Liquidazione 726000268\",\n          \"valore\": \"2020110999\"\n        },\n        {\n          \"identificativo_documento\": \"Liquidazione 726000268\",\n          \"valore\": \"2020110999\"\n        },\n        {\n          \"identificativo_documento\": \"Liquidazione 726000268\",\n          \"valore\": \"2020110999\"\n        }\n      ],\n      \"codice_contratto\": [\n        {\n          \"identificativo_documento\": \"Fattura 2601000001\",\n          \"valore\": \"1094/20\"\n        },\n        {\n          \"identificativo_documento\": \"Fattura 2501000302\",\n          \"valore\": \"1094/20\"\n        },\n        {\n          \"identificativo_documento\": \"Certificato di Pagamento N. 3\",\n          \"valore\": \"1094\"\n        },\n        {\n          \"identificativo_documento\": \"Certificato di Pagamento N. 4\",\n          \"valore\": \"1094\"\n        },\n        {\n          \"identificativo_documento\": \"Proposta di Liquidazione SAL 03\",\n          \"valore\": \"1094/2024\"\n        },\n        {\n          \"identificativo_documento\": \"Proposta di Liquidazione SAL 04\",\n          \"valore\": \"1094/2024\"\n        }\n      ],\n      \"numero_repertorio\": [\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"valore\": \"9591\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 19932/2025\",\n          \"valore\": \"9591\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 19932/2025\",\n          \"valore\": \"9591\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 19932/2025\",\n          \"valore\": \"9591\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 308/2026\",\n          \"valore\": \"9591\"\n        },\n        {\n          \"identificativo_documento\": \"Stato Avanzamento Lavori N. 4\",\n          \"valore\": \"9591\"\n        },\n        {\n          \"identificativo_documento\": \"Certificato di Pagamento N. 3\",\n          \"valore\": \"9591\"\n        },\n        {\n          \"identificativo_documento\": \"Stato Avanzamento Lavori N. 3\",\n          \"valore\": \"9591\"\n        },\n        {\n          \"identificativo_documento\": \"Certificato di Pagamento N. 4\",\n          \"valore\": \"9591\"\n        },\n        {\n          \"identificativo_documento\": \"Proposta di Liquidazione SAL 03\",\n          \"valore\": \"9591\"\n        },\n        {\n          \"identificativo_documento\": \"Proposta di Liquidazione SAL 04\",\n          \"valore\": \"9591\"\n        }\n      ],\n      \"cdr\": [\n        {\n          \"identificativo_documento\": \"DDPRO 18078/2024\",\n          \"codice_cdr\": \"007\",\n          \"settore\": \"Settore Edilizia - Settore EdiliziaPubblica\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18078/2024\",\n          \"codice_cdr\": \"007\",\n          \"settore\": \"Settore Edilizia - Settore EdiliziaPubblica\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"codice_cdr\": \"007\",\n          \"settore\": \"Settore Edilizia Pubblica\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 18556/2025\",\n          \"codice_cdr\": \"007\",\n          \"settore\": \"Settore Edilizia Pubblica\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 19932/2025\",\n          \"codice_cdr\": \"007\",\n          \"settore\": \"Settore Edilizia Pubblica\"\n        },\n        {\n          \"identificativo_documento\": \"DDPRO 19932/2025\",\n          \"codice_cdr\": \"007\",\n          \"settore\": \"Settore Edilizia Pubblica\"\n        },\n        {\n          \"identificativo_documento\": \"Liquidazione 726000268\",\n          \"codice_cdr\": \"007\",\n          \"settore\": \"Settore Edilizia Pubblica\"\n        },\n        {\n          \"identificativo_documento\": \"Liquidazione 726000268\",\n          \"codice_cdr\": \"007\",\n          \"settore\": \"Settore Edilizia Pubblica\"\n        },\n        {\n          \"identificativo_documento\": \"Liquidazione 726000268\",\n          \"codice_cdr\": \"007\",\n          \"settore\": \"Settore Edilizia Pubblica\"\n        },\n        {\n          \"identificativo_documento\": \"Liquidazione 726000268\",\n          \"codice_cdr\": \"007\",\n          \"settore\": \"Settore Edilizia Pubblica\"\n        }\n      ]\n    }\n  }\n}\n```"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "Estrattore Soggetti e Poteri": [
+      {
+        "json": {
+          "output": "```json\n{\n  \"output\": {\n    \"mappatura_documentale\": {\n      \"atto_di_liquidazione\": {\n        \"identificativo_documento\": \"Liquidazione 726000268\",\n        \"oggetto\": \"LIQUIDAZIONE A FAVORE DI TREVI S.P.A IN PAGAMENTO DEL 3° E 4° SAL RELATIVO ALL' INTERVENTO \\\"SICUREZZA SISMICA NEI LUOGHI DI CULTO, TORRI E CAMPANILI\\\" MESSA IN SICUREZZA E CONSOLIDAMENTO DELLA TORRE GARISENDA.\",\n        \"data\": \"14.01.2026\",\n        \"cdr_codice\": \"007\",\n        \"importo_totale\": 789838.61,\n        \"intestazione_comparto\": \"Settore Edilizia Pubblica\"\n      },\n      \"atti_amministrativi\": {\n        \"impegni\": [\n          {\n            \"identificativo_documento\": \"DDPRO 18078/2024\",\n            \"data\": \"02/12/2024\",\n            \"descrizione\": \"Determinazione dirigenziale che aggiudica i lavori di messa in sicurezza della Torre Garisenda a Trevi S.P.A. per un importo di Euro 1.472.324,10 (oneri fiscali inclusi) e impegna una spesa complessiva di Euro 1.487.138,71. Il finanziamento proviene dal Cap. U72385-000 (PNRR) per € 487.138,71 e dal Cap. U72145-000 (Contributo per la conservazione storica e restauro delle torri Garisenda e Asinelli) per € 1.000.000,00. Include la rimodulazione del quadro economico e la riduzione di impegni precedenti.\",\n            \"impegni\": [\n              {\n                \"codice_capitolo\": \"U72145-000\",\n                \"numero_impegno\": \"0324007414\",\n                \"codice_finanziario_v_livello\": \"U.2.02.01.10.999\",\n                \"descrizione\": \"Beni immobili di valore culturale, storico ed artistico nac\"\n              },\n              {\n                \"codice_capitolo\": \"U72385-000\",\n                \"numero_impegno\": \"0324007415\",\n                \"codice_finanziario_v_livello\": \"U.2.02.01.10.999\",\n                \"descrizione\": \"Beni immobili di valore culturale, storico ed artistico nac\"\n              },\n              {\n                \"codice_capitolo\": \"U72145-000\",\n                \"numero_impegno\": \"0324008706\",\n                \"codice_finanziario_v_livello\": \"U.2.02.01.10.999\",\n                \"descrizione\": \"Beni immobili di valore culturale, storico ed artistico nac\"\n              },\n              {\n                \"codice_capitolo\": \"U72385-000\",\n                \"numero_impegno\": \"0324008707\",\n                \"codice_finanziario_v_livello\": \"U.2.02.01.10.999\",\n                \"descrizione\": \"Beni immobili di valore culturale, storico ed artistico nac\"\n              },\n              {\n                \"codice_capitolo\": \"U72385-000\",\n                \"numero_impegno\": \"0324008708\",\n                \"codice_finanziario_v_livello\": \"U.2.02.01.10.999\",\n                \"descrizione\": \"Beni immobili di valore culturale, storico ed artistico nac\"\n              }\n            ]\n          },\n          {\n            \"identificativo_documento\": \"DDPRO 18556/2025\",\n            \"data\": \"26/11/2025\",\n            \"descrizione\": \"Determinazione dirigenziale che riduce impegni precedentemente assunti per il C.I. 6877 per complessivi euro 4.465.271,92 e impegna la somma complessiva di euro 392.915,25 su fondi comunali (Art Bonus) a seguito della rinuncia al finanziamento PNRR per la Torre Garisenda.\",\n            \"impegni\": [\n              {\n                \"codice_capitolo\": \"U72385-000\",\n                \"numero_impegno\": \"0325000946\",\n                \"codice_finanziario_v_livello\": \"U.2.02.03.05.001\",\n                \"descrizione\": \"Incarichi professionali per la realizzazione di investimenti\"\n              },\n              {\n                \"codice_capitolo\": \"U72385-000\",\n                \"numero_impegno\": \"0325000946\",\n                \"codice_finanziario_v_livello\": \"U.2.02.03.05.001\",\n                \"descrizione\": \"Incarichi professionali per la realizzazione di investimenti\"\n              },\n              {\n                \"codice_capitolo\": \"U72385-000\",\n                \"numero_impegno\": \"0325001290\",\n                \"codice_finanziario_v_livello\": \"U.2.02.01.10.999\",\n                \"descrizione\": \"Beni immobili di valore culturale, storico ed artistico nac\"\n              },\n              {\n                \"codice_capitolo\": \"U72385-000\",\n                \"numero_impegno\": \"0325001291\",\n                \"codice_finanziario_v_livello\": \"U.2.02.01.10.999\",\n                \"descrizione\": \"Beni immobili di valore culturale, storico ed artistico nac\"\n              },\n              {\n                \"codice_capitolo\": \"U72385-000\",\n                \"numero_impegno\": \"0325001292\",\n                \"codice_finanziario_v_livello\": \"U.2.02.01.10.999\",\n                \"descrizione\": \"Beni immobili di valore culturale, storico ed artistico nac\"\n              },\n              {\n                \"codice_capitolo\": \"U72385-000\",\n                \"numero_impegno\": \"0325004600\",\n                \"codice_finanziario_v_livello\": \"U.2.02.01.10.999\",\n                \"descrizione\": \"Beni immobili di valore culturale, storico ed artistico nac\"\n              },\n              {\n                \"codice_capitolo\": \"U72385-000\",\n                \"numero_impegno\": \"0325004601\",\n                \"codice_finanziario_v_livello\": \"U.2.02.01.10.999\",\n                \"descrizione\": \"Beni immobili di valore culturale, storico ed artistico nac\"\n              },\n              {\n                \"codice_capitolo\": \"U72385-000\",\n                \"numero_impegno\": \"0325004688\",\n                \"codice_finanziario_v_livello\": \"U.2.02.01.10.999\",\n                \"descrizione\": \"Beni immobili di valore culturale, storico ed artistico nac\"\n              },\n              {\n                \"codice_capitolo\": \"U72385-000\",\n                \"numero_impegno\": \"0325004689\",\n                \"codice_finanziario_v_livello\": \"U.2.02.01.10.999\",\n                \"descrizione\": \"Beni immobili di valore culturale, storico ed artistico nac\"\n              },\n              {\n                \"codice_capitolo\": \"U72385-000\",\n                \"numero_impegno\": \"0325004778\",\n                \"codice_finanziario_v_livello\": \"U.2.02.03.05.001\",\n                \"descrizione\": \"Incarichi professionali per la realizzazione di investimenti\"\n              },\n              {\n                \"codice_capitolo\": \"U72385-000\",\n                \"numero_impegno\": \"0325004779\",\n                \"codice_finanziario_v_livello\": \"U.2.02.03.05.001\",\n                \"descrizione\": \"Incarichi professionali per la realizzazione di investimenti\"\n              },\n              {\n                \"codice_capitolo\": \"U72385-000\",\n                \"numero_impegno\": \"0325004780\",\n                \"codice_finanziario_v_livello\": \"U.2.02.03.05.001\",\n                \"descrizione\": \"Incarichi professionali per la realizzazione di investimenti\"\n              },\n              {\n                \"codice_capitolo\": \"U72385-000\",\n                \"numero_impegno\": \"0325004781\",\n                \"codice_finanziario_v_livello\": \"U.2.02.03.05.001\",\n                \"descrizione\": \"Incarichi professionali per la realizzazione di investimenti\"\n              },\n              {\n                \"codice_capitolo\": \"U72385-000\",\n                \"numero_impegno\": \"0326000587\",\n                \"codice_finanziario_v_livello\": \"U.2.02.01.10.999\",\n                \"descrizione\": \"Beni immobili di valore culturale, storico ed artistico nac\"\n              },\n              {\n                \"codice_capitolo\": \"U71425-000\",\n                \"numero_impegno\": \"0325009197\",\n                \"codice_finanziario_v_livello\": \"U.2.02.01.10.999\",\n                \"descrizione\": \"Beni immobili di valore culturale, storico ed artistico nac\"\n              },\n              {\n                \"codice_capitolo\": \"U71425-000\",\n                \"numero_impegno\": \"0325009198\",\n                \"codice_finanziario_v_livello\": \"U.2.02.01.10.999\",\n                \"descrizione\": \"Beni immobili di valore culturale, storico ed artistico nac\"\n              },\n              {\n                \"codice_capitolo\": \"U71425-000\",\n                \"numero_impegno\": \"0325009199\",\n                \"codice_finanziario_v_livello\": \"U.2.02.01.10.999\",\n                \"descrizione\": \"Beni immobili di valore culturale, storico ed artistico nac\"\n              },\n              {\n                \"codice_capitolo\": \"U71425-000\",\n                \"numero_impegno\": \"0325009219\",\n                \"codice_finanziario_v_livello\": \"U.2.02.03.05.001\",\n                \"descrizione\": \"Incarichi professionali per la realizzazione di investimenti\"\n              },\n              {\n                \"codice_capitolo\": \"U71425-000\",\n                \"numero_impegno\": \"0325009220\",\n                \"codice_finanziario_v_livello\": \"U.2.02.03.05.001\",\n                \"descrizione\": \"Incarichi professionali per la realizzazione di investimenti\"\n              },\n              {\n                \"codice_capitolo\": \"U71425-000\",\n                \"numero_impegno\": \"0325009221\",\n                \"codice_finanziario_v_livello\": \"U.2.02.03.05.001\",\n                \"descrizione\": \"Incarichi professionali per la realizzazione di investimenti\"\n              },\n              {\n                \"codice_capitolo\": \"U71425-000\",\n                \"numero_impegno\": \"0325009222\",\n                \"codice_finanziario_v_livello\": \"U.2.02.03.05.001\",\n                \"descrizione\": \"Incarichi professionali per la realizzazione di investimenti\"\n              },\n              {\n                \"codice_capitolo\": \"U71425-000\",\n                \"numero_impegno\": \"0325009223\",\n                \"codice_finanziario_v_livello\": \"U.2.02.03.05.001\",\n                \"descrizione\": \"Incarichi professionali per la realizzazione di investimenti\"\n              }\n            ]\n          },\n          {\n            \"identificativo_documento\": \"DDPRO 19932/2025\",\n            \"data\": \"18/12/2025\",\n            \"descrizione\": \"Determinazione dirigenziale che approva una modifica contrattuale con nuovi prezzi per maggiori lavori relativi all'intervento di messa in sicurezza della Torre Garisenda, comportando un importo complessivo di Euro 377.444,48. Vengono impegnate le spese su capitoli del Bilancio 2025 relativi all'Art Bonus.\",\n            \"impegni\": [\n              {\n                \"codice_capitolo\": \"U71425-000\",\n                \"numero_impegno\": \"0325009479\",\n                \"codice_finanziario_v_livello\": \"U.2.02.01.10.999\",\n                \"descrizione\": \"Beni immobili di valore culturale, storico ed artistico nac\"\n              },\n              {\n                \"codice_capitolo\": \"U71420-000\",\n                \"numero_impegno\": \"0325009480\",\n                \"codice_finanziario_v_livello\": \"U.2.02.01.10.999\",\n                \"descrizione\": \"Beni immobili di valore culturale, storico ed artistico nac\"\n              },\n              {\n                \"codice_capitolo\": \"U71420-000\",\n                \"numero_impegno\": \"0325009481\",\n                \"codice_finanziario_v_livello\": \"U.2.02.01.10.999\",\n                \"descrizione\": \"Beni immobili di valore culturale, storico ed artistico nac\"\n              }\n            ]\n          }\n        ],\n        \"atto_nomina_rup\": {\n          \"identificativo_documento\": \"DDPRO 2434/2024\",\n          \"descrizione\": \"NOMINA DEI RESPONSABILI DI PROGETTO PER GLI INTERVENTI DA INSERIRE NEL PRIMO ADEGUAMENTO AFFERENTE AL PROGRAMMA TRIENNALE DEI LAVORI PUBBLICI 2024-2026\",\n          \"rup_nominato\": \"Arch. Manuela Faustini Fustini\"\n        },\n        \"deleghe\": []\n      }\n    },\n    \"anagrafica_progetto\": {\n      \"rup_in_carica\": \"Arch. Manuela Faustini Fustini\",\n      \"direttore_lavori\": \"ing. Vincenzo Daprile\",\n      \"impresa_affidataria\": {\n        \"denominazione\": \"TREVI S.P.A.\",\n        \"p_iva\": \"IT00002890408\",\n        \"iban\": null,\n        \"is_rti\": false,\n        \"mandataria\": null,\n        \"mandanti\": [],\n        \"subappaltatori\": [\n          \"CONSORZIO TIRRENO\",\n          \"RAM SERVICE SRL\",\n          \"RAM ENERGY & C. SRL\",\n          \"PICCINI TRASPORTI INDUSTRIALI s.r.l.\"\n        ]\n      }\n    },\n    \"registro_firme\": [\n      {\n        \"identificativo_documento\": \"DDPRO 2434/2024\",\n        \"firmatario_nominativo\": null,\n        \"firmatario_ruolo\": \"Capo Dipartimento\"\n      },\n      {\n        \"identificativo_documento\": \"DDPRO 18078/2024\",\n        \"firmatario_nominativo\": null,\n        \"firmatario_ruolo\": \"Direttrice\"\n      },\n      {\n        \"identificativo_documento\": \"DDPRO 18556/2025\",\n        \"firmatario_nominativo\": null,\n        \"firmatario_ruolo\": \"Direttrice\"\n      },\n      {\n        \"identificativo_documento\": \"DDPRO 19932/2025\",\n        \"firmatario_nominativo\": null,\n        \"firmatario_ruolo\": \"Direttrice\"\n      },\n      {\n        \"identificativo_documento\": \"DDPRO 308/2026\",\n        \"firmatario_nominativo\": null,\n        \"firmatario_ruolo\": \"Direttrice\"\n      },\n      {\n        \"identificativo_documento\": \"DDPRO 308/2026\",\n        \"firmatario_nominativo\": null,\n        \"firmatario_ruolo\": \"Dirigente Responsabile\"\n      },\n      {\n        \"identificativo_documento\": \"Stato Avanzamento Lavori N. 4\",\n        \"firmatario_nominativo\": \"ing. Vincenzo Daprile\",\n        \"firmatario_ruolo\": \"DIRETTORE DEI LAVORI\"\n      },\n      {\n        \"identificativo_documento\": \"Stato Avanzamento Lavori N. 4\",\n        \"firmatario_nominativo\": \"Trevi S.p.A.\",\n        \"firmatario_ruolo\": \"IMPRESA\"\n      },\n      {\n        \"identificativo_documento\": \"Stato Avanzamento Lavori N. 4\",\n        \"firmatario_nominativo\": \"arch. Manuela Faustini Fustini\",\n        \"firmatario_ruolo\": \"RESPONSABILE DEL PROCEDIMENTO\"\n      },\n      {\n        \"identificativo_documento\": \"Certificato di Pagamento N. 3\",\n        \"firmatario_nominativo\": \"ing. Vincenzo Daprile\",\n        \"firmatario_ruolo\": \"Il Direttore dei Lavori\"\n      },\n      {\n        \"identificativo_documento\": \"Certificato di Pagamento N. 3\",\n        \"firmatario_nominativo\": \"arch. Manuela Faustini Fustini\",\n        \"firmatario_ruolo\": \"Il R.U.P.\"\n      },\n      {\n        \"identificativo_documento\": \"Stato Avanzamento Lavori N. 3\",\n        \"firmatario_nominativo\": \"ing. Vincenzo Daprile\",\n        \"firmatario_ruolo\": \"Il Direttore dei Lavori\"\n      },\n      {\n        \"identificativo_documento\": \"Stato Avanzamento Lavori N. 3\",\n        \"firmatario_nominativo\": \"Trevi S.p.A.\",\n        \"firmatario_ruolo\": \"L'Impresa\"\n      },\n      {\n        \"identificativo_documento\": \"Stato Avanzamento Lavori N. 3\",\n        \"firmatario_nominativo\": \"arch. Manuela Faustini Fustini\",\n        \"firmatario_ruolo\": \"RESPONSABILE DEL PROCEDIMENTO\"\n      },\n      {\n        \"identificativo_documento\": \"Stato Avanzamento Lavori N. 3\",\n        \"firmatario_nominativo\": \"GIAN LUCA MARIA TURCONI\",\n        \"firmatario_ruolo\": null\n      },\n      {\n        \"identificativo_documento\": \"Certificato di Pagamento N. 4\",\n        \"firmatario_nominativo\": \"ing. Vincenzo Daprile\",\n        \"firmatario_ruolo\": \"Il Direttore dei Lavori\"\n      },\n      {\n        \"identificativo_documento\": \"Certificato di Pagamento N. 4\",\n        \"firmatario_nominativo\": \"arch. Manuela Faustini Fustini\",\n        \"firmatario_ruolo\": \"Il R.U.P.\"\n      },\n      {\n        \"identificativo_documento\": \"Proposta di Liquidazione SAL 03\",\n        \"firmatario_nominativo\": \"Arch. Manuela Faustini Fustini\",\n        \"firmatario_ruolo\": \"Il Responsabile Unico Del Procedimento\"\n      },\n      {\n        \"identificativo_documento\": \"Proposta di Liquidazione SAL 04\",\n        \"firmatario_nominativo\": \"Arch. Manuela Faustini Fustini\",\n        \"firmatario_ruolo\": \"Il Responsabile Unico Del Procedimento\"\n      }\n    ]\n  }\n}\n```"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "Estrattore Evidenze testuali": [
+      {
+        "json": {
+          "output": "```json\n{\n  \"output\": {\n    \"evidenze_testuali\": [\n      {\n        \"snippet\": \"Determina: DDPRO18556.2025 del 26.11.2025 e DDPRO19932.2025 del 18.12.2025 Codice intervento programma: 6877 Codice beneficiario: - 134831 Finanziato dall Unione europea - NextGenerationEU Missione 1 - Digitalizzazione, innovazione, competitivita e cultura; Componente 3 - Cultura 4.0; Misura 2 - Rigenerazione di piccoli siti - culturali, patrimonio culturale, religioso e rurale; Investimento 2.4 - Sicurezza sismica nei luoghi di culto, restauro del patrimonio culturale del FEC e siti di ricovero per le opere d arte - - Recovery art-; Linea d azione 1 - Sicurezza sismica nei luoghi di culto, torri e campanili; Finanziato dall Unione Europea - NextGeneration EU Certificato di pagamento n. 4 corrispondente al SAL n. - 4 per lavori eseguiti a tutto il 19.12.2025 - Contributo CONAI assolto ove dovuto\",\n        \"tipo_evidenza\": \"altro\",\n        \"identificativo_documento\": \"Fattura 2601000001\"\n      },\n      {\n        \"snippet\": \"DI NOMINARE i Responsabili unici di Progetto, ai sensi dell'articolo 15 del D.Lgs. n. 36/2023 , relativamente agli interventi da inserire nel primo adeguamento del Programma Triennale dei Lavori Pubblici 2024-2026, di cui all'elenco parte integrante del presente provvedimento;\",\n        \"tipo_evidenza\": \"altro\",\n        \"identificativo_documento\": \"DDPRO 2434/2024\"\n      },\n      {\n        \"snippet\": \"il valore globale stimato dell'appalto unicamente al fine di determinare la soglia dell'appalto ai sensi dell'art.14 comma 4 del D.Lgs. 36/2023 , come previsto nei documenti di gara, è stato calcolato computando la seguente modifica contrattuale ex art. 120 co. 1. lett. a): l’intervento, sebbene unitario, si compone di due fasi strettamente interconnesse, come approfonditamente descritto nei documenti a base di gara, cui si fa rinvio. La prima fase - oggetto del presente affidamento - è propedeutica, anche dal punto di vista progettuale, rispetto alla seconda. Quest’ultima, pertanto, si configura come necessaria successiva modifica contrattuale ai sensi dell’art. 120, co. 1, lett. a) del D.lgs. 36/2023, per un valore stimato pari ad euro 3.281.000,00, come risulta dalle relative clausole chiare, precise e inequivocabili del CSA (art. 8 e 9);\",\n        \"tipo_evidenza\": \"variante\",\n        \"identificativo_documento\": \"DDPRO 18078/2024\"\n      },\n      {\n        \"snippet\": \"di impegnare la somma complessiva di euro 1.487.138,71 imputandola come segue: [...] U72145-000 REIMPIEGO CONTRIBUTO PER LA CONSERVAZIONE STORICA E RESTAURO DELLE TORRI GARISENDA E ASINELLI [1.000.000,00] [...] U72385-000 REIMPIEGO DEL CONTRIBUTO UE - NEXT GENERATION EU - PNRR - M1C3 - INVESTIMENTO 2.4: \\\"SICUREZZA SISMICA NEI LUOGHI DI CULTO, RESTAURO PATRIMONIO FEC E SITI DI RICOVERO PER LE OPERE D'ARTE\\\" - LINEA D'AZIONE 1 - TORRE GARISENDA, BOLOGNA - CUP F32F24000040006 [472.324,10] [...] P [14.814,61]\",\n        \"tipo_evidenza\": \"altro\",\n        \"identificativo_documento\": \"DDPRO 18078/2024\"\n      },\n      {\n        \"snippet\": \"Finanziato dall'Unione europea - NextGenerationEU Missione 1 – Digitalizzazione, innovazione, competitività e cultura Componente 3 – Cultura 4.0 Misura 2 – Rigenerazione di piccoli siti culturali, patrimonio culturale, religioso e rurale; Investimento 2.4 – Sicurezza sismica nei luoghi di culto, restauro del patrimonio culturale del FEC e siti di ricovero per le opere d’arte (Recovery art); Linea d’azione 1 – Sicurezza sismica nei luoghi di culto, torri e campanili\",\n        \"tipo_evidenza\": \"altro\",\n        \"identificativo_documento\": \"DDPRO 18078/2024\"\n      },\n      {\n        \"snippet\": \"con determinazione dirigenziale P.G. n. 79388/2024 del 09/02/2024 è stata nominata l’Arch. Manuela Faustini Fustini, Dirigente del Settore Edilizia Pubblica- Dipartimento Lavori Pubblici, Verde e Mobilità del Comune di Bologna, quale Responsabile Unica del Progetto (RUP), ai sensi dell'art. 15 D.Lgs. 36/2023, relativamente all'intervento di cui trattasi (cod. int. 6877);\",\n        \"tipo_evidenza\": \"altro\",\n        \"identificativo_documento\": \"DDPRO 18078/2024\"\n      },\n      {\n        \"snippet\": \"Atteso che al finanziamento della somma complessiva di Euro 1.487.138,71 di cui euro 1.472.324,10 per lavori affidati (compreso Iva al 10%) ed euro 14.814,61 per accantonamenti ex. Artt. 60 e 120 comma 1 lettera a) D.Lgs 36/2023 è provveduto, nell’ambito del quadro economico approvato con determinazione dirigenziale P.G. n° 749662/2024\",\n        \"tipo_evidenza\": \"discrepanza_codici\",\n        \"identificativo_documento\": \"DDPRO 18078/2024\"\n      },\n      {\n        \"snippet\": \"Finanziato dall'Unione europea - NextGenerationEU Missione 1 – Digitalizzazione, innovazione, competitività e cultura Componente 3 – Cultura 4.0 Misura 2 – Rigenerazione di piccoli siti culturali, patrimonio culturale, religioso e rurale; Investimento 2.4 – Sicurezza sismica nei luoghi di culto, restauro del patrimonio culturale del FEC e siti di ricovero per le opere d’arte (Recovery art); Linea d’azione 1 – Sicurezza sismica nei luoghi di culto, torri e campanili\",\n        \"tipo_evidenza\": \"altro\",\n        \"identificativo_documento\": \"DDPRO 18556/2025\"\n      },\n      {\n        \"snippet\": \"anche con donazioni ai sensi del D.L. 83 del 31.5.2014, convertito con modificazioni dalla L. 106 del 29/7/2014 e ss.mm.ii. (cosiddetto “art bonus”)\",\n        \"tipo_evidenza\": \"variante\",\n        \"identificativo_documento\": \"DDPRO 18556/2025\"\n      },\n      {\n        \"snippet\": \"si è preso atto che in data 5/11/2025 è stata inviata una nota al Ministero della Cultura in cui veniva comunicato che i tempi e le scadenze imposte dal PNRR risultano incompatibili con la natura stessa dell’intervento, chiedendo di potere accedere ad altre fonti di finanziamento strutturali che consentano di realizzare la messa in sicurezza della torre con una tempistica adeguata all’intervento e al metodo osservazionale, rinunciando pertanto al finanziamento PNRR.\",\n        \"tipo_evidenza\": \"variante\",\n        \"identificativo_documento\": \"DDPRO 18556/2025\"\n      },\n      {\n        \"snippet\": \"già liquidati euro 534.693,08: non avendo ricevuto anticipazioni di cassa questa somma costituisce residuo attivo che verrà cancellato in sede di riaccertamento dei residui relativamente al consuntivo 2025; impegnati non ancora liquidati euro 392.915,25: è necessario ridurre gli impegni e contestualmente impegnare su fondi già disponibili dell’amministrazione comunale (art bonus - fondi già incassati); i restanti euro 4.072.391,67 sono solo prenotati e sono da azzerare in quanto le obbligazioni contrattuali in essere ancora da liquidare sono coperte dal contributo della fondazione già citato in premessa e dall’impegno di spesa da ricostituire di cui al punto precedente.\",\n        \"tipo_evidenza\": \"variante\",\n        \"identificativo_documento\": \"DDPRO 18556/2025\"\n      },\n      {\n        \"snippet\": \"l’intervento, sebbene unitario, si compone di due fasi strettamente interconnesse, come approfonditamente descritto nei documenti a base di gara, cui si fa rinvio; la prima fase - oggetto del sopra citato affidamento - è propedeutica, anche dal punto di vista progettuale, rispetto alla seconda la quale pertanto si configura come necessaria successiva modifica contrattuale ai sensi dell’art. 120, co. 1, lett. a) del D.lgs. 36/2023 come risulta dalle relative clausole chiare, precise e inequivocabili del Capitolato Speciale d’Appalto (art. 8).\",\n        \"tipo_evidenza\": \"variante\",\n        \"identificativo_documento\": \"DDPRO 18556/2025\"\n      },\n      {\n        \"snippet\": \"anche con donazioni ai sensi del D.L. 83 del 31.5.2014, convertito con modificazioni dalla L. 106 del 29/7/2014 e ss.mm.ii. (cosiddetto “art bonus”)\",\n        \"tipo_evidenza\": \"variante\",\n        \"identificativo_documento\": \"DDPRO 19932/2025\"\n      },\n      {\n        \"snippet\": \"APPROVAZIONE DELLA MODIFICA CONTRATTUALE PER MAGGIORI LAVORI AI SENSI DELL'ART. 106, COMMA 1, LETT. C) E COMMA 3 LETT. B) DEL D. LGS. 36/2023 SS.MM.II. (CONTRATTO REP. 9591 DEL 19/12/2024).\",\n        \"tipo_evidenza\": \"variante\",\n        \"identificativo_documento\": \"DDPRO 19932/2025\"\n      },\n      {\n        \"snippet\": \"nel corso dei lavori di adeguamento delle macchine al caso specifico della Garisenda è stato necessario modificare le zavorre, riducendo il peso della metà, inoltre, per garantire una maggiore gradualità nell’operazione di tiro si è studiato un sistema di martinetti aggiuntivi connessi a una particolare centralina.\",\n        \"tipo_evidenza\": \"variante\",\n        \"identificativo_documento\": \"DDPRO 19932/2025\"\n      },\n      {\n        \"snippet\": \"durante l’esecuzione dei lavori, ha riscontrato la necessità di effettuare alcune lavorazioni non previste nel progetto, in quanto sono emerse delle criticità non rilevabili in fase di progettazione e quindi da considerare a tutti gli effetti imprevisti ed imprevedibili e in parte migliorative, attestando che la modifica di cui trattasi non altera la natura generale del contratto, in particolare: ai sensi dell’art. 106, comma 1, lett. c) interventi determinati da circostanze impreviste ed imprevedibili - Smontaggi, montaggi e logistica - Adeguamento delle strutture - interventi su zavorre - Adeguamento delle strutture - controlli a campione e riparazioni carpenterie metalliche - Adeguamento delle strutture - sabbiature e verniciature\",\n        \"tipo_evidenza\": \"variante\",\n        \"identificativo_documento\": \"DDPRO 19932/2025\"\n      },\n      {\n        \"snippet\": \"ai sensi dell’art. 106, comma 3 lett. b) migliorie hanno comportato l’azzeramento dell’importo della voce NP.18 presente nell’elenco prezzi del progetto esecutivo e la creazione di alcuni Nuovi Prezzi come descritto nel Verbale nuovi prezzi allegato alla perizia di variante - Fornitura ricambi - martinetti a vite - Fornitura ricambi - martinetti intensificatori - Fornitura ricambi - adattamento centralina ai martinetti intensificatori e sistema integrativo sui martinetti intensificatori\",\n        \"tipo_evidenza\": \"variante\",\n        \"identificativo_documento\": \"DDPRO 19932/2025\"\n      },\n      {\n        \"snippet\": \"l’incremento dell’importo del progetto, derivante dalla differenza tra i maggiori lavori, corrispondenti a lordi euro 582.129,20 (al lordo del ribasso d’asta del 1,00%), compensati da minori lavori, corrispondenti a lordi euro 240.506,07 (al lordo del ribasso d’asta del 1,00%), riconducibili alle ipotesi di cui art. 106, comma 1, lett. c) e comma 3, lett. b) del D.Lgs. 50/2016 e ss.mm.ii., comporta un aumento rispetto al contratto di lordi euro 341.623,13 (di cui euro 341.123,13 per lavori ed euro 500,00 per oneri per la sicurezza)\",\n        \"tipo_evidenza\": \"variante\",\n        \"identificativo_documento\": \"DDPRO 19932/2025\"\n      },\n      {\n        \"snippet\": \"per la realizzazione delle lavorazioni previste si rende necessario prorogare il termine di esecuzione dei lavori di 30 (trenta) giorni naturali e consecutivi\",\n        \"tipo_evidenza\": \"altro\",\n        \"identificativo_documento\": \"DDPRO 19932/2025\"\n      },\n      {\n        \"snippet\": \"CESSIONARIO DI TREVI S.P.A. PAG.TO FT: 2501000302/25 - 2601000001/26\",\n        \"tipo_evidenza\": \"altro\",\n        \"identificativo_documento\": \"Liquidazione 726000268\"\n      },\n      {\n        \"snippet\": \"con determinazione dirigenziale N. Proposta: DD/PRO/2025/12138 N. Repertorio: DD/2025/11120 P.G. N.:571485/2025 del 30/07/2025 è stata rettificata, per mero errore materiale, la determinazione dirigenziale P.G.n. 858608/2024 limitatamente all'indicazione dell'importo netto di aggiudicazione pari ad Euro 1.338.476,45 anzichè ad Euro 1.338.847,6 come da sommatoria delle singole voci lavori e oneri della sicurezza non soggetti a ribasso riportati nel testo della citata determinazione dirigenziale nonchè risultanti altresì da quadro economico allegato parte integrante alla citata determinazione;\",\n        \"tipo_evidenza\": \"discrepanza_codici\",\n        \"identificativo_documento\": \"DDPRO 308/2026\"\n      },\n      {\n        \"snippet\": \"con Delibera di Giunta N. Proposta: DG/PRO/2025/310, N. Repertorio: DG/2025/275, P.G. N.: 854255/2025 esecutiva dal 18/11/2025 è stato dato atto della ricognizione e degli indirizzi contenuti nel provvedimento medesimo, comportando la rinuncia al finanziamento di euro 5.000.000,00 a valere sui fondi PNRR\",\n        \"tipo_evidenza\": \"variante\",\n        \"identificativo_documento\": \"DDPRO 308/2026\"\n      },\n      {\n        \"snippet\": \"con determinazione dirigenziale N. Proposta:DD/PRO/2025/19932 N. Repertorio: DD/2025/19365 P.G. N.:954347/2025 del 18/12/2025 è stata approvata una modifica contrattuale (contratto REP. N 9591 del 19/12/2024) , con nuovi prezzi (NP02), ai sensi dell'art. 106, comma 1, lett. c) e comma 3 lett. b) del D.Lgs. 36/2023 ss.mm.ii. relativa all’intervento di messa in sicurezza della Torre Garisenda (cod. int. 6877) 338.211,90 ( di cui euro 337.711,90 per lavori al netto del ribasso d’asta del 1,00%, ed euro 500,00 per oneri per la sicurezza)\",\n        \"tipo_evidenza\": \"variante\",\n        \"identificativo_documento\": \"DDPRO 308/2026\"\n      },\n      {\n        \"snippet\": \"con Determina Dirigenziale N. Proposta DD/PRO/2025/13670 - N. Repertorio DD/2025/12800 - P.G. N. 632796/2025 - esecutiva dal 08/09/2025 si è preso atto dell’avvenuta cessione del credito pro soluto tra Trevi S.p.A. (cedente) e Banca CF+Credito Fondiario S.p.A. (cessionaria), in virtù di atto notarile Rep. n. 10.666, registrato a Milano il 6 agosto 2025 al n. 88193, notificato a questa Amministrazione in data 20/08/2025 ed acquisito agli atti con pec P.G. n. 607256/2025 del 25/08/2025, in ossequio a quanto disposto dall’art. 120, comma 12 e dall’Allegato II.14 del D.lgs. 36/2023 e ss.mm.ii.;\",\n        \"tipo_evidenza\": \"altro\",\n        \"identificativo_documento\": \"DDPRO 308/2026\"\n      },\n      {\n        \"snippet\": \"che, come da riferimenti in atti, all'esecuzione dei lavori di cui trattasi, per quanto riguarda il sal n.3, si è provveduto avvalendosi dei seguenti soggetti operanti in subappalto: CONSORZIO TIRRENO di Firenze che, non avendo personale dipendente come da dichiarazione della stessa in atti, si è avvalsa dell'opera delle consorziate RAM SERVICE SRL di di Ravenna e RAM ENERGY & C. SRL di GUASTICCE COLLESALVETTI (LI) e PICCINI TRASPORTI INDUSTRIALI s.r.l. di San Miniato (PI). Per il sal n. 4 non sono intervenuti subappaltatori come da dichiarazione del RUP in atti;\",\n        \"tipo_evidenza\": \"altro\",\n        \"identificativo_documento\": \"DDPRO 308/2026\"\n      },\n      {\n        \"snippet\": \"COD. INT. 6877 DESCRIZIONE PNRR M1C3 -LINEA D'AZIONE N. 1 \\\"SICUREZZA SISMICA NEI LUOGHI DI CULTO, TORRI E CAMPANILI\\\" messa in sicurezza e consolidamento della torre Garisenda FAUSTINI FUSTINI MANUELA IMPORTO INTERVENTO 5.000.000,00\",\n        \"tipo_evidenza\": \"altro\",\n        \"identificativo_documento\": \"Nomine e conferme RUP 1° Adeguamento 2024\"\n      },\n      {\n        \"snippet\": \"Determina: DDPRO18078.2024 del 02.12.2024 e DDPRO18556.2025 del 26.11.2025 Codice intervento programma: 6877 Codice beneficiario: - 134831 Finanziato dall Unione europea - NextGenerationEU Missione 1 - Digitalizzazione, innovazione, competitivita e cultura; Componente 3 - Cultura 4.0; Misura 2 - Rigenerazione di piccoli siti - culturali, patrimonio culturale, religioso e rurale; Investimento 2.4 - Sicurezza sismica nei luoghi di culto, restauro del patrimonio culturale del FEC e siti di ricovero per le opere d arte - - Recovery art-; Linea d azione 1 - Sicurezza sismica nei luoghi di culto, torri e campanili; Finanziato dall Unione Europea - NextGeneration EU Certificato di pagamento n. 3 corrispondente al SAL n. - 3 per lavori eseguiti a tutto il 24.10.2025 - Contributo CONAI assolto ove dovuto\",\n        \"tipo_evidenza\": \"altro\",\n        \"identificativo_documento\": \"Fattura 2501000302\"\n      },\n      {\n        \"snippet\": \"Contratto in data 19/12/2024 Rep. 9591 di euro 1 338 476.45 Portato con atto aggiuntivo n. 1 a euro 1.676.688,35\",\n        \"tipo_evidenza\": \"variante\",\n        \"identificativo_documento\": \"Stato Avanzamento Lavori N. 4\"\n      },\n      {\n        \"snippet\": \"Importo della Sicurezza da contabilizzare analiticamente NON soggetto a Ribasso  euro 5´661,63 ... Parziale COSTI SICUREZZA (SPECIALI) euro 5´161,63\",\n        \"tipo_evidenza\": \"discrepanza_codici\",\n        \"identificativo_documento\": \"Stato Avanzamento Lavori N. 4\"\n      },\n      {\n        \"snippet\": \"INDICAZIONE DEI LAVORI [...] Smontaggio dei cavalletti presso Piazza del Duomo di Pisa e aree limitrofe e carico su autoarticolati per il trasporto. Si intendono comprese tutte le lavorazioni [...] Nuove zavorre in Carpenteria in acciaio per travi e pilastri realizzati con accoppiamenti saldati di piatti in lamiera di acciaio compresi eventuali connettori, piastre di attacco [...] Revisione martinetti a vite, riduttori e componenti accessori.\",\n        \"tipo_evidenza\": \"variante\",\n        \"identificativo_documento\": \"Stato Avanzamento Lavori N. 4\"\n      },\n      {\n        \"snippet\": \"PNRR - Piano Nazionale di Ripresa e Resilienza - Finanziato dall'Unione europea - Next Generation EU - FS3269862 Missione 1 – Digitalizzazione, innovazione, competitività e cultura Componente 3 – Cultura 4.0 Misura 2 – Rigenerazione di piccoli siti culturali, patrimonio culturale, religioso e rurale; Investimento 2.4 – Sicurezza sismica nei luoghi di culto, restauro del patrimonio culturale del FEC e siti di ricovero per le opere d’arte (Recovery art)--- Linea d’azione 1 – Sicurezza sismica nei luoghi di culto, torri e campanili\",\n        \"tipo_evidenza\": \"altro\",\n        \"identificativo_documento\": \"Certificato di Pagamento N. 3\"\n      },\n      {\n        \"snippet\": \"PNRR Missione 1 Digitalizzazione, innovazione, competitività e cultura Componente 3 Cultura 4.0 Misura 2 Rigenerazione di piccoli siti culturali, patrimonio culturale, religioso e rurale Investimento 2.4 Sicurezza sismica nei luoghi di culto, restauro del patrimonio culturale del FEC e siti di ricovero per le opere d’arte (Recovery art) Linea d'azione 1 Sicurezza sismica nei luoghi di culto, torri e campanili\",\n        \"tipo_evidenza\": \"altro\",\n        \"identificativo_documento\": \"Stato Avanzamento Lavori N. 3\"\n      },\n      {\n        \"snippet\": \"INDICAZIONE DEI LAVORI [...] Smontaggio dei cavalletti presso Piazza del Duomo di Pisa e aree limitrofe e carico su autoarticolati per il trasporto. Si intendono comprese tutte le lavorazioni [...] Martinetti a vite di nuova fornitura per il sollevamento selettivo delle zavorre, montati a coppie su ciascuno dei due cavalletti\",\n        \"tipo_evidenza\": \"variante\",\n        \"identificativo_documento\": \"Stato Avanzamento Lavori N. 3\"\n      },\n      {\n        \"snippet\": \"Firmato con RISERVA.\",\n        \"tipo_evidenza\": \"altro\",\n        \"identificativo_documento\": \"Stato Avanzamento Lavori N. 3\"\n      },\n      {\n        \"snippet\": \"VISTO: l'atto aggiuntivo PG 954347/2025\",\n        \"tipo_evidenza\": \"variante\",\n        \"identificativo_documento\": \"Certificato di Pagamento N. 4\"\n      },\n      {\n        \"snippet\": \"Recupero anticipazione (20% su Euro 1.338.476,45)\",\n        \"tipo_evidenza\": \"discrepanza_codici\",\n        \"identificativo_documento\": \"Certificato di Pagamento N. 4\"\n      },\n      {\n        \"snippet\": \"PNRR – Piano Nazionale di Ripresa e Resilienza Finanziato dall'Unione europea - Next Generation EU - FS3269862 Missione 1 – Componente 3 – Cultura 4.0 - Misura 2 – Investimento 2.4 – Linea d’azione 1 – Sicurezza sismica nei luoghi di culto, torri e campanili\",\n        \"tipo_evidenza\": \"altro\",\n        \"identificativo_documento\": \"Proposta di Liquidazione SAL 03\"\n      },\n      {\n        \"snippet\": \"con determinazione dirigenziale N. Proposta: DD/PRO/2025/13670 N. Repertorio: DD/2025/12800 632796/2025 si è preso atto dell’avvenuta cessione del credito pro soluto tra Trevi S.p.A. (cedente) e Banca CF+Credito Fondiario S.p.A. (cessionaria), in virtù di atto notarile Rep. n. 10.666, registrato a Milano il 6 agosto 2025 al n. 88193, notificato a questa Amministrazione in data 20/08/2025 ed acquisito agli atti con pec P.G. n. 607256/2025 del 25/08/2025, in ossequio a quanto disposto dall’art. 120, comma 12 e dall’Allegato II.14 del D.lgs. 36/2023 e ss.mm.ii.\",\n        \"tipo_evidenza\": \"altro\",\n        \"identificativo_documento\": \"Proposta di Liquidazione SAL 03\"\n      },\n      {\n        \"snippet\": \"si è proceduto all’approvazione del Verbale di Concordamento Nuovi Prezzi senza aumento di spesa n. 01, composto dai nuovi prezzi V1_NP001, V1_NP002, V1_NP003. Detti nuovi prezzi sono stati determinati nel rispetto dell’art. 120 del D.Lgs. 36/2023 e s.m.i., dell’allegato II.14 artt. 5 e 12, dell’allegato I.7.\",\n        \"tipo_evidenza\": \"variante\",\n        \"identificativo_documento\": \"Proposta di Liquidazione SAL 03\"\n      },\n      {\n        \"snippet\": \"in data 02/07/2025 con verbale PG 513595/2025 è stata concessa la proroga dei lavori n. 1;\",\n        \"tipo_evidenza\": \"altro\",\n        \"identificativo_documento\": \"Proposta di Liquidazione SAL 03\"\n      },\n      {\n        \"snippet\": \"L’appaltatore ha risposto con pec PG 884409/2025 del 27/11/2025 che, come previsto dai contratti con i titolari di sub-contratto, non è previsto il pagamento da parte della stazione appaltante.\",\n        \"tipo_evidenza\": \"altro\",\n        \"identificativo_documento\": \"Proposta di Liquidazione SAL 03\"\n      },\n      {\n        \"snippet\": \"Si è proceduto alla verifica ai sensi dell'art. 26 del capitolato speciale d'appalto, dell'art. 125 comma 5 del D.Lgs. 36/2023, con esito positivo alla verifica della regolarità contributiva, previdenziale e assicurativa attestata dalla specifica documentazione agli atti dell'impresa Trevi spa e dei titolari di sub-contratto che hanno eseguito i lavori e messa in opera al presente SAL e sono Consorzio Tirreno SCRL e delle sue imprese consorziate: RAM SERVICE S.r.l, RAM ENERGY E&C S.R.L. e PICCINI TRASPORTI INDUSTRIALI S.R.L..\",\n        \"tipo_evidenza\": \"altro\",\n        \"identificativo_documento\": \"Proposta di Liquidazione SAL 03\"\n      },\n      {\n        \"snippet\": \"il libretto delle misure e lo stato di avanzamento dei lavori eseguiti a tutto il 24/10/2025 sono stati emessi il medesimo giorno; [...] il registro di contabilità relativo al SAL in oggetto è stato firmato digitalmente dell'impresa Trevi spa, ai sensi del Contratto e relativi allegati, il giorno 27/11/2025 iscrivendo la riserva n. 01, inviato mezzo con pec PG 886969/2025 del 27/11/2025\",\n        \"tipo_evidenza\": \"altro\",\n        \"identificativo_documento\": \"Proposta di Liquidazione SAL 03\"\n      },\n      {\n        \"snippet\": \"Il Direttore dei Lavori, sentito il RUP, ha redatto ed inviato le deduzioni alle riserve apposte dall’impresa con lettera firmata il 12/12/2025 e trasmessa via PEC il 15/12/2025 con PG 943012/2025, respingendo le riserve consegnate.\",\n        \"tipo_evidenza\": \"altro\",\n        \"identificativo_documento\": \"Proposta di Liquidazione SAL 03\"\n      },\n      {\n        \"snippet\": \"L’appaltatore ha trasmesso la documentazione sul rispetto delle prescrizioni del DNSH in sede di esecuzione dell’opera, relativamente alle lavorazioni del presente SAL con lettera PG 884409/2025 del 27/11/2025, a seguito di richiesta del Direttore dei Lavori con pec PG 869944/2025 del 25/11/2025.\",\n        \"tipo_evidenza\": \"altro\",\n        \"identificativo_documento\": \"Proposta di Liquidazione SAL 03\"\n      },\n      {\n        \"snippet\": \"con determinazione dirigenziale N. Proposta: DD/PRO/2025/13670 N. Repertorio: DD/2025/12800 632796/2025 si è preso atto dell’avvenuta cessione del credito pro soluto tra Trevi S.p.A. (cedente) e Banca CF+Credito Fondiario S.p.A. (cessionaria), in virtù di atto notarile Rep. n. 10.666, registrato a Milano il 6 agosto 2025 al n. 88193, notificato a questa Amministrazione in data 20/08/2025 ed acquisito agli atti con pec P.G. n. 607256/2025 del 25/08/2025, in ossequio a quanto disposto dall’art. 120, comma 12 e dall’Allegato II.14 del D.lgs. 36/2023 e ss.mm.ii.\",\n        \"tipo_evidenza\": \"altro\",\n        \"identificativo_documento\": \"Proposta di Liquidazione SAL 04\"\n      },\n      {\n        \"snippet\": \"si è proceduto all’approvazione del Verbale di Concordamento Nuovi Prezzi senza aumento di spesa n. 01, composto dai nuovi prezzi V1_NP001, V1_NP002, V1_NP003. Detti nuovi prezzi sono stati determinati nel rispetto dell’art. 120 del D.Lgs. 36/2023 e s.m.i., dell’allegato II.14 artt. 5 e 12, dell’allegato I.7.\",\n        \"tipo_evidenza\": \"variante\",\n        \"identificativo_documento\": \"Proposta di Liquidazione SAL 04\"\n      },\n      {\n        \"snippet\": \"in data 02/07/2025 con verbale PG 513595/2025 è stata concessa la proroga dei lavori n. 1;\",\n        \"tipo_evidenza\": \"altro\",\n        \"identificativo_documento\": \"Proposta di Liquidazione SAL 04\"\n      },\n      {\n        \"snippet\": \"non è intervenuto alcun subappaltatore, come da dichiarazione dell’appaltatore.\",\n        \"tipo_evidenza\": \"altro\",\n        \"identificativo_documento\": \"Proposta di Liquidazione SAL 04\"\n      },\n      {\n        \"snippet\": \"il registro di contabilità relativo al SAL in oggetto è stato firmato digitalmente dell'impresa Trevi spa, ai sensi del Contratto e relativi allegati, il giorno 24/12/2025 senza iscrivere alcuna riserva, inviato mezzo con pec PG 963409/2025 del 24/12/2025\",\n        \"tipo_evidenza\": \"altro\",\n        \"identificativo_documento\": \"Proposta di Liquidazione SAL 04\"\n      }\n    ]\n  }\n}\n```"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "tool_cdr_lookup": {
+      "ai_tool": [
+        [
+          {
+            "node": "Validatore Soggetti e Poteri",
+            "type": "ai_tool",
+            "index": 0
+          },
+          {
+            "node": "Estrattore Soggetti e Poteri",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "tool_rup_delegation": {
+      "ai_tool": [
+        [
+          {
+            "node": "Validatore Soggetti e Poteri",
+            "type": "ai_tool",
+            "index": 0
+          },
+          {
+            "node": "Validatore Codici",
+            "type": "ai_tool",
+            "index": 0
+          },
+          {
+            "node": "Estrattore Soggetti e Poteri",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model4": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agente Contabile",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Agente Armonizzazione Contabile",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Agente di Conformità Amministrativa e Temporale",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Agente Supervisor",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Validatore Soggetti e Poteri",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Validatore Codici",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agente Contabile": {
+      "main": [
+        [
+          {
+            "node": "Merge Agenti",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Calculator": {
+      "ai_tool": [
+        [
+          {
+            "node": "Agente Contabile",
+            "type": "ai_tool",
+            "index": 0
+          },
+          {
+            "node": "Estrattore Contabile",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "tool_iva_code": {
+      "ai_tool": [
+        [
+          {
+            "node": "Agente Contabile",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "tool_siope_lookup": {
+      "ai_tool": [
+        [
+          {
+            "node": "Agente Armonizzazione Contabile",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agente Armonizzazione Contabile": {
+      "main": [
+        [
+          {
+            "node": "Merge Agenti",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "Agente di Conformità Amministrativa e Temporale": {
+      "main": [
+        [
+          {
+            "node": "Merge Agenti",
+            "type": "main",
+            "index": 4
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Validatore Codici",
+            "type": "ai_outputParser",
+            "index": 0
+          },
+          {
+            "node": "Validatore Soggetti e Poteri",
+            "type": "ai_outputParser",
+            "index": 0
+          },
+          {
+            "node": "Agente Contabile",
+            "type": "ai_outputParser",
+            "index": 0
+          },
+          {
+            "node": "Agente Armonizzazione Contabile",
+            "type": "ai_outputParser",
+            "index": 0
+          },
+          {
+            "node": "Agente di Conformità Amministrativa e Temporale",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Aggregate1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agente Supervisor": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Agenti": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Agente Supervisor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser1": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Agente Supervisor",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate1": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Estrattore identificativi",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Estrattore identificativi",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Estrattore Soggetti e Poteri",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Estrattore Codici",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Estrattore Contabile",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Estrattore Evidenze testuali",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Estrattore identificativi": {
+      "main": [
+        [
+          {
+            "node": "Merge2",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Estrattore Soggetti e Poteri",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Estrattore Codici",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Estrattore Contabile",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Estrattore Evidenze testuali",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Estrattore Codici": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript2": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript3": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript4": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript6": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser2": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Estrattore identificativi",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge2": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript5": {
+      "main": [
+        [
+          {
+            "node": "Validatore Codici",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Validatore Soggetti e Poteri",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Agente Contabile",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Agente Armonizzazione Contabile",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Agente di Conformità Amministrativa e Temporale",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execution Data": {
+      "main": [
+        []
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Execution Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Estrattore Soggetti e Poteri": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Estrattore Contabile": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Estrattore Evidenze testuali": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validatore Codici": {
+      "main": [
+        [
+          {
+            "node": "Merge Agenti",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validatore Soggetti e Poteri": {
+      "main": [
+        [
+          {
+            "node": "Merge Agenti",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "timezone": "Europe/Rome",
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": "nacp4iZ67SHrOqh6"
+  },
+  "versionId": "3a0a7638-7f3d-4876-8ff0-4e139efd2bf7",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "4d96e8837a23850635d8f89c72c5470c0d3c8bc85805a12c3b1acf26a74bc9b7"
+  },
+  "id": "GRvo3dAhaumMtOyS",
+  "tags": [
+    {
+      "updatedAt": "2026-02-26T11:57:45.386Z",
+      "createdAt": "2026-02-26T11:57:45.386Z",
+      "id": "8e61WRKGzTQBqmjo",
+      "name": "AI"
+    },
+    {
+      "updatedAt": "2026-02-26T11:57:42.455Z",
+      "createdAt": "2026-02-26T11:57:42.455Z",
+      "id": "JJslFmByWBRNEpvf",
+      "name": "Bilancio"
+    }
+  ]
+}

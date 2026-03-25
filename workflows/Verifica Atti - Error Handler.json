@@ -1,0 +1,156 @@
+{
+  "name": "Verifica Atti - Error Handler",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        -240,
+        -32
+      ],
+      "id": "0622270a-0a1c-467b-9451-ba17ef1b330c",
+      "name": "Error Trigger"
+    },
+    {
+      "parameters": {
+        "resource": "execution",
+        "operation": "get",
+        "executionId": "={{ $json.execution.id }}",
+        "options": {
+          "activeWorkflows": true
+        },
+        "requestOptions": {}
+      },
+      "type": "n8n-nodes-base.n8n",
+      "typeVersion": 1,
+      "position": [
+        -32,
+        -32
+      ],
+      "id": "126b4be6-ff6c-421c-8bcb-942ad4d76414",
+      "name": "Get an execution",
+      "credentials": {
+        "n8nApi": {
+          "id": "EVO2Sgj1xsatXx87",
+          "name": "n8n account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1804d2e5-6bdb-49d2-8f96-83fba08c4b56",
+              "name": "id_operazione",
+              "value": "={{ $json.customData.id_operazione }}",
+              "type": "string"
+            },
+            {
+              "id": "2af63d8b-d111-4e42-8c83-2c09edd7482a",
+              "name": "id_atto",
+              "value": "={{ $json.customData.id_atto }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        176,
+        -32
+      ],
+      "id": "2e35d22d-175f-4dcc-bdb7-f6b36ba25ce2",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8000/api/v1/verifica-atti/webhook-error-callback",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "id_operazione",
+              "value": "={{ $json.id_operazione }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        384,
+        -32
+      ],
+      "id": "c9653549-040d-4060-abc8-a44e83c75e09",
+      "name": "HTTP Request"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get an execution",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get an execution": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "9aac0e46-bcb0-4c53-8916-1fb90830459e",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "4d96e8837a23850635d8f89c72c5470c0d3c8bc85805a12c3b1acf26a74bc9b7"
+  },
+  "id": "nacp4iZ67SHrOqh6",
+  "tags": [
+    {
+      "updatedAt": "2026-02-26T11:57:45.386Z",
+      "createdAt": "2026-02-26T11:57:45.386Z",
+      "id": "8e61WRKGzTQBqmjo",
+      "name": "AI"
+    },
+    {
+      "updatedAt": "2026-02-26T11:57:42.455Z",
+      "createdAt": "2026-02-26T11:57:42.455Z",
+      "id": "JJslFmByWBRNEpvf",
+      "name": "Bilancio"
+    }
+  ]
+}
