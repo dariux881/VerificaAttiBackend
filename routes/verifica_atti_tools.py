@@ -1,8 +1,6 @@
 from core.settings import get_settings
 from datetime import date
-from document_loader import DocumentLoader
 from fastapi import APIRouter, Depends, HTTPException, HTTPException, status, Query
-from file_extractor import FileExtractor
 import os
 from pathlib import Path
 from sqlalchemy.orm import Session
@@ -17,6 +15,8 @@ router = APIRouter(
 
 @router.get("/get-file-data")
 def get_data(atto : str):
+    from file_extractor import FileExtractor
+
     settings = get_settings()
     
     base_files_path = Path(os.path.join(settings.DOCUMENT_BASE_PATH, atto))
@@ -38,6 +38,8 @@ def get_cdr_detail(
     ref_date: date = Query(..., description="Data di riferimento nel formato YYYY-MM-DD"),
     db : Session = Depends(get_db)
 ):
+    from document_loader import DocumentLoader
+
     document_loader = DocumentLoader()
 
     cdr_code = cdr_code.zfill(3)
@@ -56,6 +58,8 @@ def get_cdr_detail(
 
 @router.get("/rup-delegation")
 def get_rup_delegation(operation_code : str):
+    from document_loader import DocumentLoader
+
     document_loader = DocumentLoader()
 
     try:
@@ -68,6 +72,8 @@ def get_rup_delegation(operation_code : str):
 
 @router.get("/iva-code-detail")
 def get_iva_code_detail(iva_code : str):
+    from document_loader import DocumentLoader
+
     document_loader = DocumentLoader()
 
     try:
@@ -80,6 +86,8 @@ def get_iva_code_detail(iva_code : str):
 
 @router.get("/siope-details")
 def get_siope_details(code : str):
+    from document_loader import DocumentLoader
+
     document_loader = DocumentLoader()
 
     try:
