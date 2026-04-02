@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: float = Field(default=60, validation_alias="ACCESS_TOKEN_EXPIRE_MINUTES")
     REFRESH_TOKEN_EXPIRE_DAYS: float = Field(default=7, validation_alias="REFRESH_TOKEN_EXPIRE_DAYS")
 
+    PORT: int = Field(default=8000, validation_alias="PORT")
+    HOST: str = Field(default="0.0.0.0", validation_alias="HOST")
+
     class Config:
         env_file = ".env"
         case_sensitive = True
