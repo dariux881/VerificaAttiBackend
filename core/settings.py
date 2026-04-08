@@ -1,5 +1,5 @@
 # backend/app/core/config.py
-from pydantic import Field
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings
 from typing import Optional, List, Dict, Any
 import os
@@ -8,7 +8,6 @@ from functools import lru_cache
 class Settings(BaseSettings):
     # App
     DEBUG: bool = Field(default=False, validation_alias="DEBUG")
-    API_V1_STR: str = "/api/v1"
 
     ALLOWED_HOSTS: List[str] = Field(default=["*"], validation_alias="ALLOWED_HOSTS")
 
@@ -36,7 +35,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: float = Field(default=60, validation_alias="ACCESS_TOKEN_EXPIRE_MINUTES")
     REFRESH_TOKEN_EXPIRE_DAYS: float = Field(default=7, validation_alias="REFRESH_TOKEN_EXPIRE_DAYS")
 
-    PORT: int = Field(default=8000, validation_alias="PORT")
+    PORT: int = Field(default=8000, validation_aliases=AliasChoices("PORT", "APP_PORT"))
     HOST: str = Field(default="0.0.0.0", validation_alias="HOST")
 
     class Config:

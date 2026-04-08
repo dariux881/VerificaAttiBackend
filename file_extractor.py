@@ -3,6 +3,8 @@ import base64
 import fitz
 import os
 from pypdf import PdfReader
+import io
+from PIL import Image
 
 from core.settings import get_settings
 
@@ -88,17 +90,19 @@ class FileExtractor():
         return nomi_reali
 
     def __get_images_from_pdf_page(self, pdf_page, document):
+        MAX_DIMENSION = 1024  # Max pixel lato lungo
+        JPEG_QUALITY = 80     # Bilanciamento peso/leggibilità
+        DIMENSIONE_MINIMA = 15
+
         # Otteniamo l'altezza totale della pagina per calcolare i margini
         altezza_pagina = pdf_page.rect.height
-
         margine_header = 10 
         margine_footer = altezza_pagina - 10
-        dimensione_minima = 15
 
         # 2. Estrazione Immagini con filtro posizionale
         immagini_nella_pagina = pdf_page.get_images(full=True)
-
         images = []
+
         for info_img in immagini_nella_pagina:
             xref = info_img[0]
 
@@ -111,7 +115,7 @@ class FileExtractor():
 
             # --- FILTRO: DIMENSIONE ---
             # Verifichiamo se l'immagine è troppo piccola
-            if rect.width < dimensione_minima or rect.height < dimensione_minima:
+            if rect.width < DIMENSIONE_MINIMA or rect.height < DIMENSIONE_MINIMA:
                 # Salta questa immagine perché è minuscola (probabile icona)
                 continue
 
@@ -127,18 +131,48 @@ class FileExtractor():
             image_bytes = base_image["image"]
             estensione = base_image["ext"]
 
+            # Carichiamo l'immagine in Pillow per il processing
+            img = Image.open(io.BytesIO(image_bytes))
+            # 1. Conversione in RGB (necessaria per salvare in JPEG se l'originale è PNG/RGBA/CMYK)
+            if img.mode in ("RGBA", "P", "CMYK"):
+                img = img.convert("L")
+
+            # 2. Ridimensionamento proporzionale (Smart Resize)
+            # Se l'immagine è già piccola, la lasciamo stare
+            if img.width > MAX_DIMENSION or img.height > MAX_DIMENSION:
+                img.thumbnail((MAX_DIMENSION, MAX_DIMENSION), Image.Resampling.LANCZOS)
+
+            # 3. Compressione e salvataggio in Buffer
+            # Usiamo JPEG come formato standard perché è più leggero del PNG per le foto/scansioni
+            buffer = io.BytesIO()
+            img.save(buffer, format="JPEG", quality=JPEG_QUALITY, optimize=True)
+            processed_bytes = buffer.getvalue()
+
+            # 4. Controllo di efficienza: usiamo il minore tra i due
+            if len(processed_bytes) > len(image_bytes) and base_image["ext"] in ["jpeg", "jpg", "png"]:
+                # Se il processato pesa di più e l'originale è un formato standard, teniamo l'originale
+                final_bytes = image_bytes
+                final_ext = base_image["ext"]
+            else:
+                # Altrimenti usiamo la versione ottimizzata (ridimensionata/compressa)
+                final_bytes = processed_bytes
+                final_ext = "jpeg"
+
             # --- CONVERSIONE IN BASE64 ---
             # 1. Convertiamo i bytes in stringa base64
-            base64_encoded = base64.b64encode(image_bytes).decode('utf-8')
+            base64_encoded = base64.b64encode(final_bytes).decode('utf-8')
             # 2. Creiamo la stringa pronta per l'uso (Data URI)
             # Utile per il client: <img src="data:image/png;base64,...">
-            full_base64 = f"data:image/{estensione};base64,{base64_encoded}"
+            full_base64 = f"data:image/{final_ext};base64,{base64_encoded}"
 
             images.append({
                 'content': full_base64,
-                'ext': estensione,
-                'width': rect.width,
-                'height': rect.height
+                'ext': final_ext,
+                'width': img.width,
+                'height': img.height
+                # 'orig_ext': estensione,
+                # 'original_size_kb': len(image_bytes) / 1024,
+                # 'processed_size_kb': len(processed_bytes) / 1024
             })
         
         return images

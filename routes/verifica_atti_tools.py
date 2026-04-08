@@ -17,12 +17,12 @@ router = APIRouter(
 def get_data(atto : str):
     from file_extractor import FileExtractor
 
-    settings = get_settings()
     
-    base_files_path = Path(os.path.join(settings.DOCUMENT_BASE_PATH, atto))
-
     file_contents = []
     try:
+        settings = get_settings()
+        base_files_path = Path(os.path.join(settings.DOCUMENT_BASE_PATH, atto))
+
         file_extractor = FileExtractor()
         file_contents = file_extractor.extract_content_from_files(base_files_path)
     except Exception as e:
