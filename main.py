@@ -4,12 +4,16 @@ from contextlib import asynccontextmanager
 from core.database import init_db
 
 from core.settings import get_settings
+from core.logging import setup_logging
 
 from routes import verifica_atti, auth, verifica_atti_tools, admin
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Eseguito all'avvio
+    setup_logging()
+    get_settings()
+
     init_db()
     yield
     # Eseguito allo spegnimento (pulizia se necessaria)
@@ -29,10 +33,11 @@ app.include_router(auth.router)
 app.include_router(verifica_atti_tools.router)
 app.include_router(admin.router)
 
+settings = get_settings()
+
 if __name__ == "__main__":
     import uvicorn
 
-    settings = get_settings()
     uvicorn.run(
         app, 
         host=settings.HOST, 

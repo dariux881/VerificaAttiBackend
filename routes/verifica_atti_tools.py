@@ -6,6 +6,9 @@ from pathlib import Path
 from sqlalchemy.orm import Session
 
 from core.database import get_db
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Creiamo il router con un prefisso e dei tag per la documentazione automatica
 router = APIRouter(
@@ -26,7 +29,7 @@ def get_data(atto : str):
         file_extractor = FileExtractor()
         file_contents = file_extractor.extract_content_from_files(base_files_path)
     except Exception as e:
-        print("error in getting file content: " + str(e))
+        logger.error("error in getting file content: " + str(e))
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Files not found")
     
     # Qui puoi inserire la tua logica Python esistente
@@ -47,7 +50,7 @@ def get_cdr_detail(
     try:
         cdr_table = document_loader.get_cdr_table_by_date(db, ref_date)
     except Exception as e:
-        print("error in getting CDR table for date {ref_date}: " + str(e))
+        logger.error(f"error in getting CDR table for date {ref_date}: " + str(e))
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="invalid CDR table")
 
     return {
@@ -65,7 +68,7 @@ def get_rup_delegation(operation_code : str):
     try:
         rup_table = document_loader.get_rup_delegation_table()
     except Exception as e:
-        print("error in getting RUP delegation table: " + str(e))
+        logger.error("error in getting RUP delegation table: " + str(e))
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="invalid RUP delegation table")
 
     return {"status": "success", "operation_code": operation_code, "detail": rup_table.get(operation_code, {}) }
@@ -79,7 +82,7 @@ def get_iva_code_detail(iva_code : str):
     try:
         iva_table = document_loader.get_iva_codes()
     except Exception as e:
-        print("error in getting IVA codes: " + str(e))
+        logger.error("error in getting IVA codes: " + str(e))
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="invalid IVA codes")
 
     return {"status": "success", "iva_code": iva_code, "detail": iva_table.get(iva_code, {}) }
@@ -93,7 +96,7 @@ def get_siope_details(code : str):
     try:
         siope_table = document_loader.get_siope_table()
     except Exception as e:
-        print("error in getting SIOPE details: " + str(e))
+        logger.error("error in getting SIOPE details: " + str(e))
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="invalid SIOPE table details")
 
     return {"status": "success", "siope_code": code, "detail": siope_table.get(code, {}) }

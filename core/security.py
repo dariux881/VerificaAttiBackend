@@ -2,9 +2,12 @@ import bcrypt
 from datetime import datetime, timedelta, timezone
 from jose import jwt
 from core.settings import get_settings
+import logging
+
+logger = logging.getLogger(__name__)
 
 settings = get_settings()
-print(f"DEBUG: Secret Key caricata: {settings.SECRET_KEY[:5]}...")
+logger.debug(f"DEBUG: Secret Key caricata: {settings.SECRET_KEY[:5]}...")
 
 def get_password_hash(password: str) -> str:
     # Genera il sale

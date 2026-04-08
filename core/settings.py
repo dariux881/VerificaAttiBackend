@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     )
 
     # Logging
+    LOG_FOLDER: str = Field(default="logs", validation_alias="LOG_FOLDER")
     LOG_LEVEL: str = Field(default="INFO", validation_alias="LOG_LEVEL")
     LOG_FORMAT: str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 

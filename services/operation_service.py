@@ -3,6 +3,9 @@ from sqlalchemy.exc import IntegrityError
 from models.models import Operazione, StatusEnum
 import uuid
 from datetime import datetime, timezone
+import logging
+
+logger = logging.getLogger(__name__)
 
 class OperationService:
     @staticmethod
@@ -65,7 +68,7 @@ class OperationService:
                 "globali": globali
             }
         except Exception as e:
-            print(str(e))
+            logger.error(str(e))
             outcome_status = StatusEnum.ERROR
 
         # 3. Aggiornamento stato e dati

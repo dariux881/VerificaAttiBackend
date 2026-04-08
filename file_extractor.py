@@ -5,8 +5,9 @@ import os
 from pypdf import PdfReader
 import io
 from PIL import Image
+import logging
 
-from core.settings import get_settings
+logger = logging.getLogger(__name__)
 
 class FileExtractor():
     def __init__(self):
@@ -44,7 +45,7 @@ class FileExtractor():
                                     nomi = self.__get_signers_from_cades(signed_data)
                                     firmatari_pades.extend(nomi)
         except Exception as e:
-            print(f"Errore durante l'estrazione firme PAdES: {e}")
+            logger.error(f"Errore durante l'estrazione firme PAdES: {str(e)}")
             
         return list(set(firmatari_pades)) # Rimuoviamo eventuali duplicati
 
@@ -207,7 +208,7 @@ class FileExtractor():
                 'signers': firmatari
             }
         except Exception as e:
-            print("Exception reading file: " + str(e))
+            logger.error("Exception reading file: " + str(e))
             return None
 
     def _read_cades_content(self, file_path):
@@ -224,7 +225,7 @@ class FileExtractor():
             
             # Verifichiamo che sia effettivamente un file firmato (signedData)
             if info_contenuto['content_type'].native != 'signed_data':
-                print("Il file non contiene dati firmati validi.")
+                logger.info("Il file non contiene dati firmati validi.")
                 return None
 
             signed_data = info_contenuto['content']
@@ -245,7 +246,7 @@ class FileExtractor():
                 images = content.get('images', [])
                 firmatari.append(content.get('signers', []))
             else:
-                print("Contenuto testuale rilevato.")
+                logger.info("Contenuto testuale rilevato.")
                 # Decodifichiamo in stringa supponendo UTF-8 o simile
                 content = payload_binario.decode('utf-8', errors='ignore')
 
@@ -258,7 +259,7 @@ class FileExtractor():
             }
 
         except Exception as e:
-            print(f"Errore durante l'elaborazione del file: {e}")
+            logger.error(f"Errore durante l'elaborazione del file: {e}")
 
     def _read_pdf_content(self, file_path):
         """
@@ -278,7 +279,7 @@ class FileExtractor():
 
         # Verifica se il percorso esiste davvero prima di cercare i file
         if not base_files_path.exists() or not base_files_path.is_dir():
-            raise Exception('invalid folder')
+            raise Exception(f'invalid folder: {base_files_path}')
         
         file_contents = []
 
@@ -300,14 +301,14 @@ class FileExtractor():
 
                 # 1. GESTIONE P7M
                 if estensione.endswith(EXT_P7M):
-                    print(f"Processando P7M: {nome_file}")
+                    logger.debug(f"Processing P7M: {nome_file}")
                     risultato_p7m = self._read_cades_content(percorso_completo)
                     dati_documento.update(risultato_p7m)
                     is_content_valid = True
 
                 # 2. GESTIONE PDF (Diretto)
                 elif estensione.endswith(EXT_PDF):
-                    print(f"Processando PDF: {nome_file}")
+                    logger.debug(f"Processing PDF: {nome_file}")
                     # Creiamo una sottocartella specifica per le immagini di questo PDF
                     content = self._read_pdf_content(percorso_completo) 
                     dati_documento.update(content)
@@ -315,7 +316,7 @@ class FileExtractor():
 
                 # 3. GESTIONE IMMAGINI (Dirette)
                 elif estensione.endswith(EXT_IMG):
-                    print(f"Processando Immagine: {nome_file}")
+                    logger.debug(f"Processing Immagine: {nome_file}")
                     dati_documento["images"] = [percorso_completo]
                     dati_documento["text"] = "[Immagine pura - Nessun testo estratto]"
                     is_content_valid = True
@@ -324,7 +325,7 @@ class FileExtractor():
                     file_contents.append(dati_documento)
                     
             except Exception as e:
-                print(str(e))
+                logger.error(str(e))
                 break
         
         return file_contents

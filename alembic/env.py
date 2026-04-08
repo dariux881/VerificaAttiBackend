@@ -17,6 +17,9 @@ from models.models import (
 )
 
 from core.settings import get_settings
+import logging
+
+logger = logging.getLogger(__name__)
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -32,7 +35,7 @@ if config.config_file_name is not None:
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
 
-print(f"DEBUG: Tabelle rilevate in metadata: {Base.metadata.tables.keys()}")
+logger.debug(f"DEBUG: Tabelle rilevate in metadata: {Base.metadata.tables.keys()}")
 
 target_metadata = Base.metadata
 
