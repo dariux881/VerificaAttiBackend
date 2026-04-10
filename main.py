@@ -11,8 +11,8 @@ from routes import verifica_atti, auth, verifica_atti_tools, admin
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Eseguito all'avvio
-    setup_logging()
-    get_settings()
+    current_settings = get_settings()
+    setup_logging(current_settings)
 
     init_db()
     yield
@@ -37,8 +37,14 @@ settings = get_settings()
 
 if __name__ == "__main__":
     import uvicorn
+    import sys
+    from core.settings import get_settings
 
-    uvicorn.run(
-        app, 
-        host=settings.HOST, 
-        port=settings.PORT)
+    try:
+        settings = get_settings()
+        print(f"Avvio in corso sulla porta: {settings.PORT}")
+        uvicorn.run(app, host=settings.HOST, port=settings.PORT)
+    except Exception as e:
+        # Questo scriverà l'errore nello stdout che systemd dovrebbe catturare
+        print(f"ERRORE FATALE ALL'AVVIO: {e}", file=sys.stderr)
+        sys.exit(1)

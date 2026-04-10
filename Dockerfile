@@ -25,9 +25,18 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # --- STAGE 2: Final Image ---
 # Usiamo l'immagine slim, ma senza i tool di compilazione (gcc, ecc.)
 FROM python:3.12-slim
-
 WORKDIR /app
 
+# 1. Definiamo i percorsi come variabili d'ambiente (Valori di Default)
+ENV LOG_FOLDER=/var/log/atti-backend
+ENV APP_PORT=8500
+
+# 2. Prepariamo la struttura usando le variabili appena definite
+# Usiamo le parentesi graffe ${} per assicurarci che Podman legga correttamente la variabile
+RUN mkdir -p ${LOG_FOLDER} && \
+    chmod -R 777 ${LOG_FOLDER}
+	
+# 3. Copia librerie e codice
 # Copiamo solo le librerie già installate dallo stage builder
 COPY --from=builder /install /usr/local
 # Copiamo il codice sorgente
@@ -45,8 +54,7 @@ RUN apt-get update && \
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
-ENV APP_PORT=8000
 
 EXPOSE ${APP_PORT}
 
-CMD uvicorn main:app --host 0.0.0.0 --port ${APP_PORT}
+CMD ["python", "main.py"]

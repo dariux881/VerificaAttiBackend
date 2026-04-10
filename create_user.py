@@ -3,6 +3,9 @@ from core.database import SessionLocal, engine
 from models import models
 from core.security import get_password_hash
 import uuid
+import logging
+
+logger = logging.getLogger(__name__)
 
 def create_superuser():
     db: Session = SessionLocal()
@@ -15,7 +18,7 @@ def create_superuser():
     # 2. Controllo se esiste già
     user_exists = db.query(models.User).filter(models.User.username == admin_username).first()
     if user_exists:
-        print(f"L'utente {admin_username} esiste già.")
+        logger.error(f"L'utente {admin_username} esiste già.")
         return
 
     # 3. Creazione record con password hashata
@@ -31,13 +34,13 @@ def create_superuser():
     try:
         db.add(new_admin)
         db.commit()
-        print(f"--- UTENTE ADMIN CREATO CON SUCCESSO ---")
-        print(f"Username: {admin_username}")
-        print(f"Password: {admin_password}")
-        print(f"-----------------------------------------")
+        logger.info(f"--- UTENTE ADMIN CREATO CON SUCCESSO ---")
+        logger.info(f"Username: {admin_username}")
+        logger.debug(f"Password: {admin_password}")
+        logger.info(f"-----------------------------------------")
     except Exception as e:
         db.rollback()
-        print(f"Errore durante la creazione: {e}")
+        logger.error(f"Errore durante la creazione: {str(e)}")
     finally:
         db.close()
 
