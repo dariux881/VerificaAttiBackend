@@ -9,7 +9,7 @@ ARG HTTP_PROXY
 ENV http_proxy=$HTTP_PROXY
 ENV https_proxy=$HTTP_PROXY
 
-# Installiamo solo il necessario per compilare (es. per psycopg2 o simili)
+# Installiamo solo il necessario per compilare
 RUN apt-get update && apt-get install -y \
     gcc \
     libpq-dev \
@@ -57,4 +57,5 @@ ENV PYTHONUNBUFFERED=1
 
 EXPOSE ${APP_PORT}
 
-CMD ["python", "main.py"]
+# CMD ["python", "main.py"]
+CMD python main.py || (echo "ERRORE CRITICO" && sleep 3600)

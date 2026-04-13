@@ -69,7 +69,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://127.0.0.1:8000/api/v1/verifica-atti/webhook-error-callback",
+        "url": "http://atti-backend-api:8500/api/v1/verifica-atti/webhook-error-callback",
         "sendBody": true,
         "bodyParameters": {
           "parameters": [

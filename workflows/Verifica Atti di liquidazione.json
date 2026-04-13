@@ -3,7 +3,7 @@
   "nodes": [
     {
       "parameters": {
-        "url": "=http://127.0.0.1:8000/api/get-file-data",
+        "url": "=http://atti-backend-api:8500/api/get-file-data",
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
@@ -27,7 +27,7 @@
     {
       "parameters": {
         "toolDescription": "Ottiene i dettagli di un CDR",
-        "url": "=http://127.0.0.1:8000/api/cdr-detail?cdr_code={{ $fromAI('cdr_code') }}&ref_date={{ $fromAI('ref_date') }}",
+        "url": "=http://atti-backend-api:8500/api/cdr-detail?cdr_code={{ $fromAI('cdr_code') }}&ref_date={{ $fromAI('ref_date') }}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequestTool",
@@ -42,7 +42,7 @@
     {
       "parameters": {
         "toolDescription": "Ottiene il nome del rup nominato su un codice intervento",
-        "url": "=http://127.0.0.1:8000/api/rup-delegation?operation_code={{ $fromAI('operation_code') }}",
+        "url": "=http://atti-backend-api:8500/api/rup-delegation?operation_code={{ $fromAI('operation_code') }}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequestTool",
@@ -105,7 +105,7 @@
     {
       "parameters": {
         "toolDescription": "Ottiene dettagli su codice iva esplicitato in SAP",
-        "url": "=http://127.0.0.1:8000/api/iva-code-detail?iva_code={{ $fromAI('codice_iva') }}",
+        "url": "=http://atti-backend-api:8500/api/iva-code-detail?iva_code={{ $fromAI('codice_iva') }}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequestTool",
@@ -136,7 +136,7 @@
     {
       "parameters": {
         "toolDescription": "Ottiene dettagli su codice iva esplicitato in SAP",
-        "url": "=http://127.0.0.1:8000/api/siope-details?code={{ $fromAI('code') }}",
+        "url": "=http://atti-backend-api:8500/api/siope-details?code={{ $fromAI('code') }}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequestTool",
@@ -294,7 +294,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://127.0.0.1:8000/api/v1/verifica-atti/webhook-callback",
+        "url": "http://atti-backend-api:8500/api/v1/verifica-atti/webhook-callback",
         "sendBody": true,
         "bodyParameters": {
           "parameters": [

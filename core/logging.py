@@ -10,7 +10,7 @@ def setup_logging(settings):
     try:
         # Crea directory logs se non esiste
         log_dir = Path(settings.LOG_FOLDER)
-        # log_dir.mkdir(exist_ok=True)
+        log_dir.mkdir(exist_ok=True)
         
         logging_config = {
             "version": 1,

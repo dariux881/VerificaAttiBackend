@@ -10,6 +10,9 @@ logger = logging.getLogger(__name__)
 # Sostituisci con le tue credenziali PostgreSQL
 db_url = get_settings().DATABASE_URL
 
+logger.debug(f"database URL: {db_url}")
+print(f"database URL: {db_url}")
+
 engine = create_engine(db_url)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
