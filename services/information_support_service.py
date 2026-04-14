@@ -1,11 +1,19 @@
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from models.schemas import CDRVersion as CDRInput
 from models.models import CDRVersion as CDRVersionDB
+from models.models import Settings
 from sqlalchemy.orm import Session
 
 from sqlalchemy import and_, update
 from typing import Optional, Dict, Any
 import uuid
+
+from core.settings import get_settings
+import logging
+
+logger = logging.getLogger(__name__)
+
+WEBHOOK_KEY = "N8N_WEBHOOK_URL"
 
 class InformationSupportService:
     @staticmethod
@@ -13,6 +21,9 @@ class InformationSupportService:
         """
         Gestisce l'inserimento di una nuova versione CDR mantenendo la coerenza temporale.
         """
+
+        logger.info(f"user {user_id} is importing a new CDR input table")
+
         # 1. Preparazione dati iniziali
         nuovo_inizio = cdr_input.inizio_validita.date()
         # Se non specificata, la fine è il 31-12-9999
@@ -72,3 +83,57 @@ class InformationSupportService:
         except Exception as e:
             db.rollback() # Annulla tutto in caso di errore
             raise e
+    
+    @staticmethod
+    def setup_webhook_url(db: Session, webhook_url: str, user_id: str):
+        try:
+            logger.info(f"User {user_id} is setting a new webhook URL")
+
+            # Cerchiamo se esiste già la chiave
+            current_webhook_entry = db.query(Settings).filter(
+                Settings.key == WEBHOOK_KEY 
+            ).first()
+
+            now = datetime.now(timezone.utc)
+
+            if not current_webhook_entry:
+                # Caso NUOVO: Dobbiamo aggiungere l'oggetto alla sessione
+                current_webhook_entry = Settings(
+                    id=str(uuid.uuid4()),
+                    key=WEBHOOK_KEY,
+                    value=webhook_url,
+                    created_by=user_id,
+                    updated_by=user_id,
+                    created_at=now,
+                    updated_at=now
+                )
+                db.add(current_webhook_entry)
+            else:
+                # Caso AGGIORNAMENTO: SQLAlchemy traccia le modifiche automaticamente
+                current_webhook_entry.value = webhook_url
+                current_webhook_entry.updated_by = user_id
+                current_webhook_entry.updated_at = now
+
+            db.commit()
+            
+            db.refresh(current_webhook_entry)
+            return current_webhook_entry
+
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Error setting webhook URL: {e}")
+            raise e
+        
+    @staticmethod
+    def get_webhook_url(db: Session):
+        try:
+            current_wekbook_entry = db.query(Settings).filter(
+                Settings.key == WEBHOOK_KEY 
+            ).first()
+
+            if not current_wekbook_entry:
+                return get_settings().VERIFICA_ATTI_WEBHOOK_URL
+            
+            return current_wekbook_entry.value
+        except Exception as e:
+            logger.exception(e)

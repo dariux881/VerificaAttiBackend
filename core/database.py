@@ -21,7 +21,7 @@ def init_db():
     try:
         # Questo comando crea tutte le tabelle definite nei modelli 
         # se non esistono già nel database.
-        from models.models import Operazione, TokenBlacklist, User, Feedback
+        from models.models import Operazione, TokenBlacklist, User, Feedback, Settings
         Base.metadata.create_all(bind=engine)
 
         logger.info("DB created successfully")

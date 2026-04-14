@@ -12,7 +12,21 @@ class StatusEnum(str, enum.Enum):
     PENDING = "PENDING"
     DONE = "DONE"
     ERROR = "ERROR"
-    
+
+class Settings(Base):
+    __tablename__ = "settings"
+
+    id = Column(String, primary_key=True, index=True, default=lambda: str(uuid.uuid4()))
+    key = Column(String, unique=True)
+    value = Column(String)
+    notes = Column(String, nullable=True)
+
+    created_by = Column(String, nullable=False)
+    updated_by = Column(String, nullable=False)
+    created_at = Column(DateTime(timezone=True))
+    updated_at = Column(DateTime(timezone=True))
+
+
 class User(Base):
     __tablename__ = "utenti"
 

@@ -27,7 +27,7 @@ class Settings(BaseSettings):
 
     HEALTH_CHECK_INTERVAL_SECONDS: int = Field(default=300, validation_alias="HEALTH_CHECK_INTERVAL_SECONDS")
     
-    VERIFICA_ATTI_WEBHOOK_URL: str = Field(default="", validation_alias="VERIFICA_ATTI_WEBHOOK_URL")
+    VERIFICA_ATTI_WEBHOOK_URL: str = Field(default=None, validation_alias="VERIFICA_ATTI_WEBHOOK_URL")
 
     DATABASE_URL: str = Field(default="", validation_alias="DATABASE_URL")
 

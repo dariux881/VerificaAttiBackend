@@ -2,12 +2,15 @@ from fastapi import APIRouter, Depends, BackgroundTasks, HTTPException
 import httpx
 from sqlalchemy.orm import Session
 from core.auth import get_current_user_id
-from core.database import get_db
+from core.database import get_db, SessionLocal
 
 from core.settings import get_settings
 from models.models import Feedback, Operazione, StatusEnum
 from models.schemas import FeedbackCreate, OperazioneRead
 from services.operation_service import OperationService
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Creiamo il router con un prefisso e dei tag per la documentazione automatica
 router = APIRouter(
@@ -28,15 +31,31 @@ async def start_acts_check(
     op, errore = OperationService.create_or_start(db, parametro, current_user_id)
     
     if errore:
+        logger.error(f'Error in starting new operation with paramenter {str}: {errore}')
         raise HTTPException(status_code=400, detail=errore)
-
-    # Funzione interna per invio a n8n
-    async def send_operation_request(id_req, p):
-        async with httpx.AsyncClient() as client:
-            await client.post(get_settings().VERIFICA_ATTI_WEBHOOK_URL, json={"id_operazione": id_req, "testo": p})
 
     background_tasks.add_task(send_operation_request, op.id, parametro)
     return op
+
+async def send_operation_request(id_req, p):
+    from services.information_support_service import InformationSupportService
+
+    db = SessionLocal()
+
+    try:
+        async with httpx.AsyncClient() as client:
+            webhook_url = InformationSupportService.get_webhook_url(db)
+
+            response = await client.post(webhook_url, json={"id_operazione": id_req, "testo": p})
+            response.raise_for_status()
+
+            logger.info(f'Operation for task {id_req} request sent')
+    except Exception as e:
+        logger.exception(str(e))
+
+        OperationService.process_error_result_and_save(db, id_req)
+    finally:
+        db.close()
 
 # --- ENDPOINT 2: RICEZIONE ESITO DA N8N ---
 @router.post("/webhook-callback")
