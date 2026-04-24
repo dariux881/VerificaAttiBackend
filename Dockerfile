@@ -27,9 +27,11 @@ RUN pip install --no-cache-dir --upgrade pip && \
 FROM python:3.12-slim
 WORKDIR /app
 
+ARG LOG_FOLDER
+ARG APP_PORT
 # 1. Definiamo i percorsi come variabili d'ambiente (Valori di Default)
-ENV LOG_FOLDER=/var/log/atti-backend
-ENV APP_PORT=8500
+ENV LOG_FOLDER=${LOG_FOLDER}
+ENV APP_PORT=${APP_PORT}
 
 # 2. Prepariamo la struttura usando le variabili appena definite
 # Usiamo le parentesi graffe ${} per assicurarci che Podman legga correttamente la variabile
@@ -57,5 +59,4 @@ ENV PYTHONUNBUFFERED=1
 
 EXPOSE ${APP_PORT}
 
-# CMD ["python", "main.py"]
-CMD python main.py || (echo "ERRORE CRITICO" && sleep 3600)
+CMD python main.py || (echo "ERRORE_CRITICO" && sleep 3600)

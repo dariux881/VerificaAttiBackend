@@ -52,21 +52,21 @@ def setup_logging(settings):
             "loggers": {
                 "": {  # Root logger
                     "level": settings.LOG_LEVEL,
-                    "handlers": ["console"],
+                    "handlers": ["console", "file"],
                 },
                 "app": {
                     "level": settings.LOG_LEVEL,
-                    "handlers": ["console"],
+                    "handlers": ["console", "file"],
                     "propagate": False,
                 },
                 "sqlalchemy.engine": {
                     "level": "WARNING" if not settings.DEBUG else "INFO",
-                    "handlers": ["console"],
+                    "handlers": ["console", "file"],
                     "propagate": False,
                 },
                 "uvicorn": {
                     "level": "INFO",
-                    "handlers": ["console"],
+                    "handlers": ["console", "file"],
                     "propagate": False,
                 },
             },
