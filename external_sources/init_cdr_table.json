@@ -1,0 +1,331 @@
+{
+    "nome_versione": "Prima Versione",
+    "inizio_validita": "2020-01-01",
+    "dati": {
+        "001": {
+            "person_in_charge": "Dott. Valerio Montalto",
+            "unit": "DIREZIONE GENERALE",
+            "area_department": null
+        },
+        "002": {
+            "person_in_charge": "Avv. Daniela Gemelli",
+            "unit": "AREA PERSONALE E ORGANIZZAZIONE",
+            "area_department": "AREA PERSONALE E ORGANIZZAZIONE"
+        },
+        "003": {
+            "person_in_charge": "Dott. ssa Miriam Pompilia Pepe",
+            "unit": "Area Risorse Finanziarie e Patrimonio - Economato",
+            "area_department": "AREA RISORSE FINANZIARIE E PATRIMONIO"
+        },
+        "004": {
+            "person_in_charge": "Dott. ssa Miriam Pompilia Pepe",
+            "unit": "Area Risorse Finanziarie e Patrimonio - Patrimonio",
+            "area_department": "AREA RISORSE FINANZIARIE E PATRIMONIO"
+        },
+        "005": {
+            "person_in_charge": "Dott.ssa Silvia Marreddu",
+            "unit": "Settore Statistica",
+            "area_department": "DIPARTIMENTO  PROGRAMMAZIONE, DATI, DIGITALE, DIRITTI E PARI OPPORTUNITA'"
+        },
+        "006": {
+            "person_in_charge": "Avv. Antonella Trentini",
+            "unit": "Avvocatura",
+            "area_department": null
+        },
+        "007": {
+            "person_in_charge": "Arch. Manuela Faustini Fustini",
+            "unit": "Settore Edilizia Pubblica",
+            "area_department": "DIPARTIMENTO LAVORI PUBBLICI, VERDE E MOBILITA'"
+        },
+        "008": {
+            "person_in_charge": "Dott.ssa Nicoletta Marcolin",
+            "unit": "Settore Servizi Demografici",
+            "area_department": "DIPARTIMENTO SEGRETERIA GENERALE, PARTECIPATE, APPALTI, SPORT E QUARTIERI"
+        },
+        "009": {
+            "person_in_charge": "Dott. ssa Miriam Pompilia Pepe",
+            "unit": "Area Risorse Finanziarie e Patrimonio - Bilancio",
+            "area_department": "AREA RISORSE FINANZIARIE E PATRIMONIO"
+        },
+        "011": {
+            "person_in_charge": "Dott. ssa Miriam Pompilia Pepe",
+            "unit": "Area Risorse Finanziarie e Patrimonio - Entrate",
+            "area_department": "AREA RISORSE FINANZIARIE E PATRIMONIO"
+        },
+        "012": {
+            "person_in_charge": "Ing. Simone Stella",
+            "unit": "Settore Manutenzione delle Citta' e Progetto Bologna Verde - Gestione Immobili e Impianti a Rete",
+            "area_department": "DIPARTIMENTO LAVORI PUBBLICI, VERDE E MOBILITA'"
+        },
+        "013": {
+            "person_in_charge": "Dott.ssa Giorgia Boldrini",
+            "unit": "Settore Cultura e Creativita'",
+            "area_department": "DIPARTIMENTO CULTURA"
+        },
+        "016": {
+            "person_in_charge": "Dott. Chris Tomesani",
+            "unit": "DIPARTIMENTO WELFARE E PROMOZIONE DEL BENESSERE DI COMUNITA'",
+            "area_department": "DIPARTIMENTO WELFARE E PROMOZIONE DEL BENESSERE DI COMUNITA'"
+        },
+        "017": {
+            "person_in_charge": "Arch. Giovanni Ginocchini",
+            "unit": "Settore MobilitÃ  sostenibile e Infrastrutture - Piani e progetti per la rete tram e la mobilitÃ  sostenibile",
+            "area_department": "DIPARTIMENTO LAVORI PUBBLICI, VERDE E MOBILITA'"
+        },
+        "018": {
+            "person_in_charge": "Arch. Benedetta Corsano Annibaldi",
+            "unit": "Settore Strade e Cura della CittÃ  - Manutenzione strade",
+            "area_department": "DIPARTIMENTO LAVORI PUBBLICI, VERDE E MOBILITA'"
+        },
+        "019": {
+            "person_in_charge": "Dott.ssa Veronica Ceruti",
+            "unit": "DIPARTIMENTO EDUCAZIONE, ISTRUZIONE E NUOVE GENERAZIONI",
+            "area_department": null
+        },
+        "020": {
+            "person_in_charge": "Dott. Alberto Nuzzo",
+            "unit": "Area Sicurezza Urbana Integrata e Protezione Civile - Protezione civile",
+            "area_department": "AREA SICUREZZA URBANA INTEGRATA E PROTEZIONE CIVILE"
+        },
+        "021": {
+            "person_in_charge": "Dott.ssa Lucia Paglioni",
+            "unit": "Settore Sport",
+            "area_department": "DIPARTIMENTO SEGRETERIA GENERALE, PARTECIPATE, APPALTI, SPORT E QUARTIERI"
+        },
+        "023": {
+            "person_in_charge": "Avv. Maria Pia Trevisani",
+            "unit": "Staff del Consiglio comunale e Atti Normativi",
+            "area_department": null
+        },
+        "024": {
+            "person_in_charge": "Arch. Giovanni Ginocchini",
+            "unit": "Settore MobilitÃ  sostenibile e Infrastrutture - Sistemi per la mobilita'",
+            "area_department": "DIPARTIMENTO LAVORI PUBBLICI, VERDE E MOBILITA'"
+        },
+        "025": {
+            "person_in_charge": "Dott.ssa Lara Bonfiglioli",
+            "unit": "DIPARTIMENTO SEGRETERIA GENERALE, PARTECIPATE, APPALTI, SPORT E QUARTIERI",
+            "area_department": null
+        },
+        "026": {
+            "person_in_charge": "Dott. Valerio Montalto",
+            "unit": "Gabinetto del Sindaco",
+            "area_department": "DIREZIONE GENERALE"
+        },
+        "028": {
+            "person_in_charge": "Dott.ssa Pierina Martinelli",
+            "unit": "Settore Economia",
+            "area_department": "DIREZIONE GENERALE"
+        },
+        "029": {
+            "person_in_charge": "Dott.ssa Lara Bonfiglioli",
+            "unit": "Dipartimento Segreteria Generale, Partecipate, Appalti,Sport e Quartieri - Partecipazioni societarie",
+            "area_department": "DIPARTIMENTO SEGRETERIA GENERALE, PARTECIPATE, APPALTI, SPORT E QUARTIERI"
+        },
+        "030": {
+            "person_in_charge": "Arch. Manuela Faustini Fustini",
+            "unit": "DIPARTIMENTO LAVORI PUBBLICI, VERDE E MOBILITA'",
+            "area_department": null
+        },
+        "031": {
+            "person_in_charge": "Ing. Simone Stella",
+            "unit": "Settore Manutenzione della cittÃ  e Progetto Bologna Verde - Verde",
+            "area_department": "DIPARTIMENTO LAVORI PUBBLICI, VERDE E MOBILITA'"
+        },
+        "034": {
+            "person_in_charge": "Dott. Stefano Mineo",
+            "unit": "Settore Agenda Digitale e Sistemi Informativi",
+            "area_department": "DIPARTIMENTO  PROGRAMMAZIONE, DATI, DIGITALE, DIRITTI E PARI OPPORTUNITA'"
+        },
+        "035": {
+            "person_in_charge": "Ing. Osvaldo Panaro",
+            "unit": "Area Europa, Innovazione e Internazionalizzazione della Citta' - Promozione e Turismo",
+            "area_department": "AREA EUROPA, INNOVAZIONE E INTERNAZIONALIZZAZIONE DELLA CITTA'"
+        },
+        "036": {
+            "person_in_charge": "Dott.ssa Veronica Ceruti",
+            "unit": "Dipartimento Educazione, Istruzione e Nuove Generazioni - Progetto Politiche per i Giovani",
+            "area_department": "DIPARTIMENTO EDUCAZIONE, ISTRUZIONE E NUOVE GENERAZIONI"
+        },
+        "037": {
+            "person_in_charge": "Dott.ssa Mariagrazia Bonzagni",
+            "unit": "DIPARTIMENTO  PROGRAMMAZIONE, DATI, DIGITALE, DIRITTI E PARI OPPORTUNITA'",
+            "area_department": null
+        },
+        "038": {
+            "person_in_charge": "Dott. Chris Tomesani",
+            "unit": "Settore Salute, Benessere e Autonomia della persona",
+            "area_department": "DIPARTIMENTO WELFARE E PROMOZIONE DEL BENESSERE DI COMUNITA'"
+        },
+        "040": {
+            "person_in_charge": "Dott.ssa Gina Simona Simoni",
+            "unit": "Settore Servizio Sociale",
+            "area_department": "DIPARTIMENTO WELFARE E PROMOZIONE DEL BENESSERE DI COMUNITA'"
+        },
+        "41": {
+            "person_in_charge": "Dott. Romano Mignani",
+            "unit": "AREA SICUREZZA URBANA INTEGRATA E PROTEZIONE CIVILE - Polizia locale",
+            "area_department": "AREA SICUREZZA URBANA INTEGRATA E PROTEZIONE CIVILE"
+        },
+        "043": {
+            "person_in_charge": "Dott.ssa Giorgia Boldrini",
+            "unit": "DIPARTIMENTO CULTURA",
+            "area_department": null
+        },
+        "044": {
+            "person_in_charge": "Ing. Osvaldo Panaro",
+            "unit": "Area Europa, Innovazione e Internazionalizzazione della Citta' - Europa e Internazionale",
+            "area_department": "AREA EUROPA, INNOVAZIONE E INTERNAZIONALIZZAZIONE DELLA CITTA'"
+        },
+        "046": {
+            "person_in_charge": "Arch. Monica Cesari",
+            "unit": "Settore Servizi per l' Edilizia Privata",
+            "area_department": "DIPARTIMENTO URBANISTICA, CASA E AMBIENTE"
+        },
+        "047": {
+            "person_in_charge": "Arch. Monica Cesari",
+            "unit": "DIPARTIMENTO URBANISTICA, CASA, AMBIENTE",
+            "area_department": null
+        },
+        "048": {
+            "person_in_charge": "Arch. Francesco Evangelisti",
+            "unit": "Settore Ufficio di Piano Urbanistico",
+            "area_department": "DIPARTIMENTO URBANISTICA, CASA E AMBIENTE"
+        },
+        "049": {
+            "person_in_charge": "Ing. Osvaldo Panaro",
+            "unit": "AREA EUROPA, INNOVAZIONE E INTERNAZIONALIZZAZIONE DELLA CITTA'",
+            "area_department": null
+        },
+        "051": {
+            "person_in_charge": "Arch. Benedetta Corsano Annibaldi",
+            "unit": "Settore Strade e Cura della CittÃ  - Gestione Rifiuti",
+            "area_department": "DIPARTIMENTO LAVORI PUBBLICI, VERDE E MOBILITA'"
+        },
+        "052": {
+            "person_in_charge": "Dott. Maurizio Ferretti",
+            "unit": "Settore Semplificazione Amministrativa e Cura delle Relazioni con la Cittadinanza",
+            "area_department": "DIPARTIMENTO  PROGRAMMAZIONE, DATI, DIGITALE, DIRITTI E PARI OPPORTUNITA'"
+        },
+        "053": {
+            "person_in_charge": "Dott. Valerio Montalto",
+            "unit": "Direzione generale - Economia della notte",
+            "area_department": "DIREZIONE GENERALE"
+        },
+        "054": {
+            "person_in_charge": "Dott. Valerio Montalto",
+            "unit": "Direzione generale - Interventi Urbani Complessi",
+            "area_department": "DIREZIONE GENERALE"
+        },
+        "055": {
+            "person_in_charge": "Dott. Donato di Memmo",
+            "unit": "Settore Quartieri e Amm.one Condivisa, SussidiarietÃ  e Partecipazione",
+            "area_department": "DIPARTIMENTO SEGRETERIA GENERALE, PARTECIPATE, APPALTI ,SPORT E QUARTIERI"
+        },
+        "056": {
+            "person_in_charge": "Arch. Manuela Faustini Fustini",
+            "unit": "Dipartimento Lavori Pubblici, Verde e Mobilita' - Spazio Pubblico e Impronta Verde",
+            "area_department": "DIPARTIMENTO LAVORI PUBBLICI, VERDE E MOBILITA'"
+        },
+        "057": {
+            "person_in_charge": "Avv. Maria Pia Trevisani",
+            "unit": "Settore Gare e Appalti",
+            "area_department": "DIPARTIMENTO SEGRETERIA GENERALE, PARTECIPATE, APPALTI ,SPORT E QUARTIERI"
+        },
+        "060": {
+            "person_in_charge": "Dott.ssa Gina Simona Simoni",
+            "unit": "Settore Servizio Sociale - Servizio sociale territoriale unico",
+            "area_department": "DIPARTIMENTO WELFARE E PROMOZIONE DEL BENESSERE DI COMUNITA'"
+        },
+        "061": {
+            "person_in_charge": "Dott.ssa Giorgia Boldrini",
+            "unit": "Settore Musei Civici Bologna",
+            "area_department": "DIPARTIMENTO CULTURA"
+        },
+        "065": {
+            "person_in_charge": "Dott.ssa Veronica Ceruti",
+            "unit": "Settore Biblioteche e Welfare Culturale",
+            "area_department": "DIPARTIMENTO CULTURA"
+        },
+        "068": {
+            "person_in_charge": "Dott.ssa Anna Giordano",
+            "unit": "Settore Sistema Integrato di Educazione e Istruzione 0-6 anni",
+            "area_department": "DIPARTIMENTO EDUCAZIONE, ISTRUZIONE E NUOVE GENERAZIONI"
+        },
+        "070": {
+            "person_in_charge": "Dott.ssa Veronica Ceruti",
+            "unit": "Dipartimento Educazione, Istruzione e Nuove Generazioni - Servizi educativi e scolastici territoriali - gestione centralizzata",
+            "area_department": "DIPARTIMENTO EDUCAZIONE, ISTRUZIONE E NUOVE GENERAZIONI"
+        },
+        "072": {
+            "person_in_charge": "Dott. Donato Di Memmo",
+            "unit": "Quartiere Navile",
+            "area_department": null
+        },
+        "074": {
+            "person_in_charge": "Dott. Massimiliano Danielli",
+            "unit": "Quartiere Borgo Panigale - Reno",
+            "area_department": "DIPARTIMENTO SEGRETERIA GENERALE, PARTECIPATE, APPALTI, SPORT E QUARTIERI"
+        },
+        "075": {
+            "person_in_charge": "Dott.ssa Gessica Frigato",
+            "unit": "Quartiere San Donato - San Vitale",
+            "area_department": "DIPARTIMENTO SEGRETERIA GENERALE, PARTECIPATE, APPALTI, SPORT E QUARTIERI"
+        },
+        "076": {
+            "person_in_charge": "Dott.ssa Antonella Sava",
+            "unit": "Quartiere Santo Stefano",
+            "area_department": "DIPARTIMENTO SEGRETERIA GENERALE, PARTECIPATE, APPALTI, SPORT E QUARTIERI"
+        },
+        "078": {
+            "person_in_charge": "Dott. Massimiliano Danielli",
+            "unit": "Quartiere Porto - Saragozza",
+            "area_department": "DIPARTIMENTO SEGRETERIA GENERALE, PARTECIPATE, APPALTI, SPORT E QUARTIERI"
+        },
+        "079": {
+            "person_in_charge": "Dott. Paolo Ricci",
+            "unit": "Quartiere Savena",
+            "area_department": "DIPARTIMENTO SEGRETERIA GENERALE, PARTECIPATE, APPALTI, SPORT E QUARTIERI"
+        },
+        "080": {
+            "person_in_charge": "Arch. Manuela Faustini Fustini",
+            "unit": "Dipartimento Lavori Pubblici, Verde e Mobilita' - Lavori Pubblici con finanziamenti europei",
+            "area_department": "DIPARTIMENTO LAVORI PUBBLICI, VERDE E MOBILITA'"
+        },
+        "081": {
+            "person_in_charge": "Arch. Manuela Faustini Fustini",
+            "unit": "Settore Edilizia Pubblica - Progetti speciali edilizia",
+            "area_department": "DIPARTIMENTO LAVORI PUBBLICI, VERDE E MOBILITA'"
+        },
+        "082": {
+            "person_in_charge": "Arch. Giovanni Ginocchini",
+            "unit": "Settore MobilitÃ  Sostenibile e Infrastrutture-Progetto integrato per la mobilitÃ  bolognese - P.I.M.BO.",
+            "area_department": "DIPARTIMENTO LAVORI PUBBLICI, VERDE E MOBILITA'"
+        },
+        "083": {
+            "person_in_charge": "Arch. Giovanni Ginocchini",
+            "unit": "Settore MobilitÃ  Sostebibile e Infrastrutture - People Mover",
+            "area_department": "DIPARTIMENTO LAVORI PUBBLICI, VERDE E MOBILITA'"
+        },
+        "084": {
+            "person_in_charge": "Arch. Manuela Faustini Fustini",
+            "unit": "Dipartimento Lavori Pubblici, Verde e Mobilita'-Progettazioni speciali e azioni di mobility management",
+            "area_department": "DIPARTIMENTO LAVORI PUBBLICI, VERDE E MOBILITA'"
+        },
+        "085": {
+            "person_in_charge": "Arch. Manuela Faustini Fustini",
+            "unit": "Settore Edulizia pubblica -Progetti trasversali",
+            "area_department": "DIPARTIMENTO LAVORI PUBBLICI, VERDE E MOBILITA'"
+        },
+        "404": {
+            "person_in_charge": "Dott. Marco Guerzoni",
+            "unit": "Settore Politiche abitative",
+            "area_department": "DIPARTIMENTO URBANISTICA, CASA E AMBIENTE"
+        },
+        "465": {
+            "person_in_charge": "Dott. Claudio Savoia",
+            "unit": "Settore Transizione Ecologica e Ufficio Clima",
+            "area_department": "DIPARTIMENTO URBANISTICA, CASA E AMBIENTE"
+        }
+    }
+}

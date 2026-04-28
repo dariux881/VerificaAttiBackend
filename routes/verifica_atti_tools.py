@@ -49,6 +49,8 @@ def get_cdr_detail(
 
     try:
         cdr_table = document_loader.get_cdr_table_by_date(db, ref_date)
+
+        cdr_detail = cdr_table.get(cdr_code, {})
     except Exception as e:
         logger.error(f"error in getting CDR table for date {ref_date}: " + str(e))
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="invalid CDR table")
@@ -56,7 +58,7 @@ def get_cdr_detail(
     return {
         "status": "success", 
         "cdr_code": cdr_code, 
-        "cdr_detail": cdr_table.get(cdr_code, {})
+        "cdr_detail": cdr_detail
     }
 
 @router.get("/rup-delegation")

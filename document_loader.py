@@ -6,6 +6,9 @@ from sqlalchemy import and_
 
 from core.settings import get_settings
 from models.models import CDRVersion
+import logging
+
+logger = logging.getLogger(__name__)
 
 class DocumentLoader():
     def __init__(self):
@@ -102,27 +105,35 @@ class DocumentLoader():
         if self.rup_delegation_table:
             return self.rup_delegation_table
 
-        file_path = os.path.join(get_settings().SOURCES_BASE_PATH, 'tabella_nomina_rup.csv')
+        try:
+            base_path = get_settings().SOURCES_BASE_PATH
+            file_path = os.path.join(base_path, 'tabella_nomina_rup.csv')
 
-        # Caricamento del CSV tramite pandas
-        df = pd.read_csv(file_path, encoding='latin-1')
-        
-        # Trasformazione del DataFrame in una lista di dizionari (formato record)
-        # Questo crea il formato richiesto dal tuo ciclo: [{"Colonna": "Valore"}, ...]
-        rup_records = df.to_dict(orient='records')
+            if not os.path.isfile(file_path):
+                raise OSError(f'RUP table not found. File "${file_path}" is not a valid file')
 
-        mapping = {
-            "key": "COD_INT",
-            "descrizione": "DESCRIZIONE",
-            "RUP": "RUP",
-            "PG_nomina" : "Pg_nomina",
-            "Importo_intervento" : "IMPORTO_INTERVENTO"
-        }
-        
-        # Invocazione del metodo di mappatura
-        self.rup_delegation_table = self._map_input(rup_records, mapping)
+            # Caricamento del CSV tramite pandas
+            df = pd.read_csv(file_path, encoding='latin-1')
+            
+            # Trasformazione del DataFrame in una lista di dizionari (formato record)
+            # Questo crea il formato richiesto dal tuo ciclo: [{"Colonna": "Valore"}, ...]
+            rup_records = df.to_dict(orient='records')
 
-        return self.rup_delegation_table
+            mapping = {
+                "key": "COD_INT",
+                "descrizione": "DESCRIZIONE",
+                "RUP": "RUP",
+                "PG_nomina" : "Pg_nomina",
+                "Importo_intervento" : "IMPORTO_INTERVENTO"
+            }
+            
+            # Invocazione del metodo di mappatura
+            self.rup_delegation_table = self._map_input(rup_records, mapping)
+
+            return self.rup_delegation_table
+        except Exception as e:
+            logger.error(f'Error Getting RUP table: ${str(e)}')
+            raise e
 
     def get_iva_codes(self):
         """
