@@ -17,12 +17,27 @@ class Settings(BaseSettings):
         validation_alias="CORS_ORIGINS"
     )
 
+    # Proxy handling
+    PROXY_ENABLED: bool = Field(default=False, validation_alias="PROXY_ENABLED")
+    PROXY_HOST: str = Field(
+        default="", 
+        validation_alias=AliasChoices("PROXY_HOST", "http_proxy", "HTTP_PROXY")
+    )
+
     # Logging
     LOG_FOLDER: str = Field(default="logs", validation_alias="LOG_FOLDER")
     LOG_LEVEL: str = Field(default="INFO", validation_alias="LOG_LEVEL")
     LOG_FORMAT: str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 
+    # Document extractor
+    # Valori ammessi: "LOCAL" o "GDRIVE"
+    EXTRACTOR_SOURCE: str = Field(default="LOCAL", validation_alias="EXTRACTOR_SOURCE")
+    
+    # Necessario se EXTRACTOR_SOURCE è "GDRIVE"
+    GDRIVE_CREDENTIALS_PATH: str = Field(default="credentials.json", validation_alias="GDRIVE_CREDENTIALS_PATH")
+    GDRIVE_FOLDER_ID: str = Field(default="", validation_alias="GDRIVE_FOLDER_ID")
     DOCUMENT_BASE_PATH: str = Field(default=r".\atti", validation_alias="DOCUMENT_BASE_PATH")
+
     SOURCES_BASE_PATH: str = Field(default=r".\external_sources", validation_alias="SOURCES_BASE_PATH")
 
     HEALTH_CHECK_INTERVAL_SECONDS: int = Field(default=300, validation_alias="HEALTH_CHECK_INTERVAL_SECONDS")

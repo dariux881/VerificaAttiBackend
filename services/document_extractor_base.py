@@ -1,17 +1,31 @@
-from asn1crypto import cms
-import base64
 import fitz
-import os
-from pypdf import PdfReader
-import io
 from PIL import Image
+from asn1crypto import cms
+from pypdf import PdfReader
+
+import base64
+import io
 import logging
 
 logger = logging.getLogger(__name__)
 
-class FileExtractor():
+class DocumentExtractorBase():
     def __init__(self):
-        pass
+        self._file_contents = []
+    
+        # Estensioni supportate
+        self.EXT_PDF = ('.pdf',)
+        self.EXT_P7M = ('.p7m',)
+        self.EXT_IMG = ('.jpg', '.jpeg', '.png', '.tiff')
+    
+    def _is_pdf(self, filename):
+        return filename.lower().endswith(self.EXT_PDF)
+
+    def _is_cades(self, filename):
+        return filename.lower().endswith(self.EXT_P7M)
+
+    def _is_image(self, filename):
+        return filename.lower().endswith(self.EXT_IMG)
 
     def __get_signers_from_pades(self, pdf_bytes):
         """
@@ -22,7 +36,7 @@ class FileExtractor():
             # Carichiamo il PDF con pypdf per accedere ai dizionari delle firme
             from io import BytesIO
             reader = PdfReader(BytesIO(pdf_bytes))
-            
+
             # Verifichiamo se ci sono campi modulo (dove risiedono le firme)
             if "/AcroForm" in reader.trailer["/Root"]:
                 fields = reader.get_fields()
@@ -34,11 +48,11 @@ class FileExtractor():
                             if "/Contents" in sig_object:
                                 # Estraiamo i byte della firma PKCS#7
                                 pkcs7_buffer = sig_object["/Contents"]
-                                
+
                                 # Usiamo asn1crypto per caricare la struttura
                                 # Nota: i byte di pypdf possono avere zeri finali (padding)
                                 info_contenuto = cms.ContentInfo.load(pkcs7_buffer.strip(b'\x00'))
-                                
+
                                 if info_contenuto['content_type'].native == 'signed_data':
                                     signed_data = info_contenuto['content']
                                     # RIUTILIZZO del tuo metodo esistente!
@@ -46,7 +60,7 @@ class FileExtractor():
                                     firmatari_pades.extend(nomi)
         except Exception as e:
             logger.error(f"Errore durante l'estrazione firme PAdES: {str(e)}")
-            
+
         return list(set(firmatari_pades)) # Rimuoviamo eventuali duplicati
 
     def __get_signers_from_cades(self, signed_data):
@@ -54,7 +68,7 @@ class FileExtractor():
         Mappa i certificati presenti nel p7m e restituisce i nomi reali dei firmatari.
         """
         nomi_reali = []
-        
+
         # 1. Creiamo un dizionario di tutti i certificati nel pacchetto per serial_number
         mappa_certificati = {}
         for cert_choices in signed_data['certificates']:
@@ -66,28 +80,28 @@ class FileExtractor():
         # 2. Iteriamo sui firmatari (signer_infos)
         for signer_info in signed_data['signer_infos']:
             sid = signer_info['sid']
-            
+
             # Cerchiamo il certificato corrispondente usando il serial_number
             if sid.name == 'issuer_and_serial_number':
                 serial_cercato = sid.native['serial_number']
-                
+
                 if serial_cercato in mappa_certificati:
                     certificato = mappa_certificati[serial_cercato]
                     subject = certificato.subject.native
-                    
+
                     # Il Common Name (CN) di solito contiene "NOME COGNOME" 
                     # o il codice fiscale nei certificati italiani
                     nome_completo = subject.get('common_name', 'Nome Sconosciuto')
-                    
+
                     # Se preferisci maggiore dettaglio, puoi cercare campi specifici
                     nome = subject.get('given_name', '')
                     cognome = subject.get('surname', '')
-                    
+
                     if nome and cognome:
                         nomi_reali.append(f"{nome} {cognome}")
                     else:
                         nomi_reali.append(nome_completo)
-            
+
         return nomi_reali
 
     def __get_images_from_pdf_page(self, pdf_page, document):
@@ -97,7 +111,7 @@ class FileExtractor():
 
         # Otteniamo l'altezza totale della pagina per calcolare i margini
         altezza_pagina = pdf_page.rect.height
-        margine_header = 10 
+        margine_header = 10
         margine_footer = altezza_pagina - 10
 
         # 2. Estrazione Immagini con filtro posizionale
@@ -175,7 +189,7 @@ class FileExtractor():
                 # 'original_size_kb': len(image_bytes) / 1024,
                 # 'processed_size_kb': len(processed_bytes) / 1024
             })
-        
+
         return images
 
     def _read_pdf_from_binary(self, pdf_bytes):
@@ -189,10 +203,10 @@ class FileExtractor():
         try:
             # 1. Estrazione Firme PAdES
             firmatari = self.__get_signers_from_pades(pdf_bytes)
-                                                      
+
             # 2. Estrazione Contenuto (fitz)
             documento = fitz.open(stream=pdf_bytes, filetype="pdf")
-            
+
             for numero_pagina, pagina in enumerate(documento):
                 # 1. Estrazione Testo
                 testo_estratto += pagina.get_text()
@@ -200,7 +214,7 @@ class FileExtractor():
                 # 2. Estrazione Immagini
                 images_in_page = self.__get_images_from_pdf_page(pagina, documento)
                 images.extend(images_in_page)
-            
+
             documento.close()
             return {
                 'text': testo_estratto,
@@ -210,18 +224,15 @@ class FileExtractor():
         except Exception as e:
             logger.error("Exception reading file: " + str(e))
             return None
-
-    def _read_cades_content(self, file_path):
+    
+    def _read_cades_from_binary(self, p7m_bytes):
         """
-        Legge un file .p7m, estrae firmatari, verifica la struttura 
+        Legge il contenuto di un .p7m, estrae firmatari, verifica la struttura 
         e restituisce il contenuto.
         """
         try:
-            with open(file_path, 'rb') as f:
-                dati_firme = f.read()
-
             # Decodifichiamo la struttura PKCS#7 (ContentInfo)
-            info_contenuto = cms.ContentInfo.load(dati_firme)
+            info_contenuto = cms.ContentInfo.load(p7m_bytes)
             
             # Verifichiamo che sia effettivamente un file firmato (signedData)
             if info_contenuto['content_type'].native != 'signed_data':
@@ -251,6 +262,7 @@ class FileExtractor():
                 content = payload_binario.decode('utf-8', errors='ignore')
 
                 text = content
+                images = []
 
             return {
                 'signers': firmatari,
@@ -261,71 +273,55 @@ class FileExtractor():
         except Exception as e:
             logger.error(f"Errore durante l'elaborazione del file: {e}")
 
-    def _read_pdf_content(self, file_path):
-        """
-        Mantiene la firma originale. Legge il file e delega al metodo binario.
-        """
-        with open(file_path, "rb") as f:
-            pdf_bytes = f.read()
-        
-        # Invocazione del metodo di estrazione logica
-        return self._read_pdf_from_binary(pdf_bytes)
+    def _read_cades_content(self, document_ref):
+        pass
 
-    def extract_content_from_files(self, base_files_path):
-        # Estensioni supportate
-        EXT_PDF = ('.pdf',)
-        EXT_P7M = ('.p7m',)
-        EXT_IMG = ('.jpg', '.jpeg', '.png', '.tiff')
+    def _read_pdf_content(self, document_ref):
+        pass
 
-        # Verifica se il percorso esiste davvero prima di cercare i file
-        if not base_files_path.exists() or not base_files_path.is_dir():
-            raise Exception(f'invalid folder: {base_files_path}')
-        
-        file_contents = []
+    def _process_document_content(self, document_ref, document_name):
+        dati_documento = {
+            "filename": document_name,
+            "signers": [],
+            "text": "",
+            "images": []
+        }
 
-        for nome_file in os.listdir(base_files_path):
-            percorso_completo = os.path.join(base_files_path, nome_file)
-            if not os.path.isfile(percorso_completo):
-                continue
+        try:
+            is_content_valid = False
 
-            estensione = nome_file.lower()
-            dati_documento = {
-                "filename": nome_file,
-                "signers": [],
-                "text": "",
-                "images": []
-            }
+            # 1. GESTIONE P7M
+            if self._is_cades(document_name):
+                logger.debug(f"Processing P7M: {document_name}")
+                risultato_p7m = self._read_cades_content(document_ref)
+                dati_documento.update(risultato_p7m)
+                is_content_valid = True
 
-            try:
-                is_content_valid = False
+            # 2. GESTIONE PDF (Diretto)
+            elif self._is_pdf(document_name):
+                logger.debug(f"Processing PDF: {document_name}")
+                # Creiamo una sottocartella specifica per le immagini di questo PDF
+                content = self._read_pdf_content(document_ref) 
+                dati_documento.update(content)
+                is_content_valid = True
 
-                # 1. GESTIONE P7M
-                if estensione.endswith(EXT_P7M):
-                    logger.debug(f"Processing P7M: {nome_file}")
-                    risultato_p7m = self._read_cades_content(percorso_completo)
-                    dati_documento.update(risultato_p7m)
-                    is_content_valid = True
+            # 3. GESTIONE IMMAGINI (Dirette)
+            elif self._is_image(document_name):
+                logger.debug(f"Processing Immagine: {document_name}")
+                dati_documento["images"] = [document_ref]
+                dati_documento["text"] = "[Immagine pura - Nessun testo estratto]"
+                is_content_valid = True
 
-                # 2. GESTIONE PDF (Diretto)
-                elif estensione.endswith(EXT_PDF):
-                    logger.debug(f"Processing PDF: {nome_file}")
-                    # Creiamo una sottocartella specifica per le immagini di questo PDF
-                    content = self._read_pdf_content(percorso_completo) 
-                    dati_documento.update(content)
-                    is_content_valid = True
+            if is_content_valid:
+                self._file_contents.append(dati_documento)
+                
+        except Exception as e:
+            logger.error(str(e))
+            raise e
 
-                # 3. GESTIONE IMMAGINI (Dirette)
-                elif estensione.endswith(EXT_IMG):
-                    logger.debug(f"Processing Immagine: {nome_file}")
-                    dati_documento["images"] = [percorso_completo]
-                    dati_documento["text"] = "[Immagine pura - Nessun testo estratto]"
-                    is_content_valid = True
-
-                if is_content_valid:
-                    file_contents.append(dati_documento)
-                    
-            except Exception as e:
-                logger.error(str(e))
-                break
-        
-        return file_contents
+    def get_documents_content(
+            self, 
+            base_folder,
+            excluded_file_names=[]
+            ):
+        pass

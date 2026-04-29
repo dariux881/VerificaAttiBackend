@@ -1,8 +1,5 @@
-from core.settings import get_settings
 from datetime import date
 from fastapi import APIRouter, Depends, HTTPException, HTTPException, status, Query
-import os
-from pathlib import Path
 from sqlalchemy.orm import Session
 
 from core.database import get_db
@@ -17,17 +14,15 @@ router = APIRouter(
 )
 
 @router.get("/get-file-data")
-def get_data(atto : str):
-    from file_extractor import FileExtractor
-
+def get_data(
+        atto : str,
+        db: Session = Depends(get_db)):
+    from services.document_extractor_factory import DocumentExtractorFactory
     
     file_contents = []
     try:
-        settings = get_settings()
-        base_files_path = Path(os.path.join(settings.DOCUMENT_BASE_PATH, atto))
-
-        file_extractor = FileExtractor()
-        file_contents = file_extractor.extract_content_from_files(base_files_path)
+        document_extractor = DocumentExtractorFactory.get_extractor(db)
+        file_contents = document_extractor.get_documents_content(atto)
     except Exception as e:
         logger.error("error in getting file content: " + str(e))
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Files not found")
