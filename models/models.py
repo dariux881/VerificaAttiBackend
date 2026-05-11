@@ -38,6 +38,8 @@ class User(Base):
 
     full_name = Column(String, nullable=True)
     is_active = Column(Boolean, default=True)
+    is_locked = Column(Boolean, default=False)
+    must_change_password = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     # Relazione: permette di accedere a user.operazioni

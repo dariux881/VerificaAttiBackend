@@ -9,9 +9,7 @@ class Token(BaseModel):
     refresh_token: str
     token_type: str
     username: str
-
-class TokenData(BaseModel):
-    username: Optional[str] = None
+    must_change_password: Optional[bool] = False
 
 # --- SCHEMI UTENTE ---
 class UserBase(BaseModel):
@@ -37,6 +35,10 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str
     full_name: str | None = None
+
+class PasswordChange(BaseModel):
+    old_password: str
+    new_password: str
 
 # --- SCHEMI OPERAZIONE ---
 class OperazioneBase(BaseModel):

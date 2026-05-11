@@ -31,7 +31,6 @@ async def post_cdr_table(
         'message': 'CDR table successfully imported'
     }
 
-
 @router.post("/setup-webhook-url")
 async def setup_webhook_url(
     webhook_url: str, 
