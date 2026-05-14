@@ -47,6 +47,7 @@ target_metadata = Base.metadata
 
 database_url = get_settings().DATABASE_URL
 if database_url:
+    database_url = database_url.replace("%", "%%")
     config.set_main_option("sqlalchemy.url", database_url)
 
 def run_migrations_offline() -> None:
@@ -80,8 +81,6 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
-
-    # database_url = "sqlite:///./test.db"
 
     connectable = create_engine(
         database_url, 

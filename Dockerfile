@@ -59,4 +59,9 @@ ENV PYTHONUNBUFFERED=1
 
 EXPOSE ${APP_PORT}
 
-CMD python main.py || (echo "ERRORE_CRITICO" && sleep 3600)
+# Rendiamo lo script eseguibile
+RUN chmod +x /app/entrypoint.sh
+
+# Definiamo l'ENTRYPOINT invece del CMD diretto
+ENTRYPOINT ["/app/entrypoint.sh"]
+# CMD python main.py || (echo "ERRORE_CRITICO" && sleep 3600)

@@ -15,7 +15,7 @@ async def lifespan(app: FastAPI):
     # Eseguito all'avvio
     setup_logging(settings)
 
-    init_db()
+    # init_db() # **NB:** don't call init_db in production. Use alembic instead
     yield
     # Eseguito allo spegnimento (pulizia se necessaria)
 
