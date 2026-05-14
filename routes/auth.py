@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
@@ -6,11 +7,15 @@ from jose import jwt
 
 from core.database import get_db
 from core.settings import get_settings
+from models import models
 from models.models import User
 from core.security import verify_password, create_access_token, create_refresh_token, get_password_hash
-from models.schemas import Token, PasswordChange
+from models.schemas import Token, PasswordChange, UserCreate
 from core.auth import get_current_user_id, get_unverified_user_id
 
+import logging
+
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["Autenticazione"])
 
 @router.post("/login", response_model=Token)
@@ -140,7 +145,56 @@ async def logout(current_user_id: str = Depends(get_current_user_id)):
     """
     return {"detail": "Logout effettuato con successo (rimuovere il token lato client)"}
 
+@router.post("/create-user")
+async def create_user(
+    user: UserCreate,
+    db: Session = Depends(get_db),
+    current_user_id: str = Depends(get_current_user_id)):
 
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "NOT_VALID_USER", "message": "Invalid user"}
+        )
+
+    ##TODO CHECK ADMIN USER
+    
+    # 2. Controllo se esiste già
+    user_exists = db.query(models.User).filter(models.User.username == user.username).first()
+    if user_exists:
+        logger.warning(f"L'utente {user.username} esiste già.")
+        return
+
+    # 3. Creazione record con password hashata
+    new_admin = models.User(
+        id=str(uuid.uuid4()),
+        username=user.username,
+        email=user.email,
+        hashed_password=get_password_hash(user.password),
+        full_name=user.full_name,
+        is_active=True,
+        must_change_password=True,
+        is_locked=False
+    )
+
+    try:
+        db.add(new_admin)
+        db.commit()
+        logger.info(f"--- UTENTE ADMIN CREATO CON SUCCESSO ---")
+        logger.info(f"Username: {user.username}")
+        logger.info(f"-----------------------------------------")
+
+        return {"detail": "Password aggiornata con successo"}
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Errore durante la creazione: {str(e)}")
+
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "NOT_VALID_USER", "message": "Invalid user"}
+        )
+    finally:
+        db.close()
 
 @router.post("/reset-password")
 async def reset_password(
