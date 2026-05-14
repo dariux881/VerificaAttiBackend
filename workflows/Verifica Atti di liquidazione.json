@@ -3,7 +3,7 @@
   "nodes": [
     {
       "parameters": {
-        "url": "=http://atti-backend-api:8500/api/get-file-data",
+        "url": "=http://backend.verificaatti:8500/api/get-file-data",
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
@@ -18,77 +18,58 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
-        -1296,
-        656
+        -2800,
+        368
       ],
-      "id": "47d6d0be-fe6b-4172-bc36-cfb0c6c822a5",
+      "id": "06777138-8320-4466-9627-369d6982f88c",
       "name": "HTTP Request"
     },
     {
       "parameters": {
         "toolDescription": "Ottiene i dettagli di un CDR",
-        "url": "=http://atti-backend-api:8500/api/cdr-detail?cdr_code={{ $fromAI('cdr_code') }}&ref_date={{ $fromAI('ref_date') }}",
+        "url": "=http://backend.verificaatti:8500/api/cdr-detail?cdr_code={{ $fromAI('cdr_code') }}&ref_date={{ $fromAI('ref_date') }}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequestTool",
       "typeVersion": 4.4,
       "position": [
-        528,
-        1488
+        -976,
+        1200
       ],
-      "id": "90527ba5-9218-4b5b-8135-35153905f38e",
+      "id": "2c27f216-f3dc-4a48-ad8f-a8be308f0200",
       "name": "tool_cdr_lookup"
     },
     {
       "parameters": {
         "toolDescription": "Ottiene il nome del rup nominato su un codice intervento",
-        "url": "=http://atti-backend-api:8500/api/rup-delegation?operation_code={{ $fromAI('operation_code') }}",
+        "url": "=http://backend.verificaatti:8500/api/rup-delegation?operation_code={{ $fromAI('operation_code') }}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequestTool",
       "typeVersion": 4.4,
       "position": [
-        800,
-        1488
+        -704,
+        1200
       ],
-      "id": "9b80b0e7-3b88-443d-897f-01556f685464",
+      "id": "5ade3440-a84d-45d7-8b27-355cd6b1d6d6",
       "name": "tool_rup_delegation"
     },
     {
       "parameters": {
-        "modelName": "models/gemini-3-flash-preview",
-        "options": {}
-      },
-      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
-      "typeVersion": 1,
-      "position": [
-        1328,
-        1472
-      ],
-      "id": "55128d69-f57b-424e-8e85-c120e3c1aa83",
-      "name": "Google Gemini Chat Model4",
-      "executeOnce": false,
-      "credentials": {
-        "googlePalmApi": {
-          "id": "hNx7divvgQJCYwvz",
-          "name": "Google Gemini(PaLM) Api account"
-        }
-      }
-    },
-    {
-      "parameters": {
         "promptType": "define",
-        "text": "=Sei il Responsabile della Ragioneria del Comune di Bologna. La tua missione è verificare la coerenza finanziaria della liquidazione e la giustificazione delle varianti.\n\n## Protocollo Operativo\nsegui rigorosamente il seguente protocollo operativo:\n\n### Importo Quadro Economico\nVerificare che l'importo lavori dell'ultimo quadro economico (comprese le varianti) sia riportato correttamente nell'intestazione del SAL e del Certificato di pagamento. Verificare lo stesso sul Certificato di pagamento, che include, oltre all'importo, gli oneri di sicurezza. In questo caso considerare gli importi senza IVA.\n\nPer le varianti cerca in `evidenze_testuali` riferimenti a 'varianti', 'errori materiali' o 'rettifiche' che giustificano la differenza di importo.\n\n**Documento di riferimento**: Quadro Economico\n\n**Documenti coinvolti**: Atto di impegno, Quadro Economico, SAL, Certificato di pagamento\n\n### Importi Certificato, SAL e SLIQ\nVerificare la coerenza degli importi tra tutti i Certificati di pagamento e i relativi SAL. Di solito entrambi i documenti riportano le stesse cifre. A volte il Certificato di Pagamento omette delle esplicitazioni di somme riportate solo nel SAL.\n\nConcentrati sulle cifre che incontri su ENTRAMBI i documenti. Tra i due documenti connessi tra loro, verifica:\n- importo totale in liquidazione (deve esserci in entrambi)\n- gli oneri di sicurezza deveono coincidere (se presenti)\n- Il residuo in fondo al certificato deve coincidere con quanto riportato tra i due documenti. (se presente)\n- Del certificato di pagamento verifica ATTENTAMENTE E SCRUPOLOSAMENTE che la cifra indicata in lettere (`importo_netto_in_lettere_cert_pag`) sia esattamente la cifra espressa in numeri (`importo_netto_cert_pag`)\n\n#### Confronto con SLIQ\nIl certificato di pagamento (quindi il relativo SAL), riportano il credito dell'impresa o delle imprese che sarà liquidato. La somma può essere divisa su più fatture e su più atti di impegno / capitoli / mandati della SLIQ.\n\nE' fondamentale che le cifre finali siano coerenti al centesimo con l'importo della SLIQ. In particolare:\n- `importo_totale_liquidazione` della sliq è il lordo da riconoscere. \n- `totale_detrazioni` della SLIQ deve essere la somma degli imponibili riportati sulle fatture e sui certificati di pagamento (coerentemente con il regime fiscale applicato)\n- `importo_netto_cert_pag` relativi a tutti i certificati di pagamento deve corrispondere a quanto viene liquidato in SLIQ, al netto delle detrazioni\n\n**Documento di riferimento**: Certificato di pagamento\n\n**Documenti coinvolti**: SAL, Certificato di pagamento, SLIQ\n\nSii preciso al centesimo.\nFai i calcoli conoscendo le regole sui regimi fiscali applicati. \n\nPer ogni controllo riporta l'esito:\n- 'VALIDATO' se il singolo controllo passa\n- 'NON_VALIDATO' altrimenti\n\n### Fattura\n\nVerificare che gli importi siano coerenti tra le fatture e SLIQ, così come Numero e Data della fattura. Concentrati sui singoli mandati di ogni SLIQ e le fatture citate.\nVerifica rigorosamente che il campo `importo_totale` dell'`atto_di_liquidazione` sia identico spaccato al centesimo all'`importo_totale_liquidazione` della sliq.\n\n**Analisi IVA**: Se riscontri una differenza tra importo liquidato e totale fattura, verifica se la differenza è dovuta all'IVA o al regime fiscale dell'IVA. Il regime fiscale lo ritrovi nella fattura corrispondente (`documenti_contabili.fatture[X].regime_fiscale_iva`). Riporta questa informazione nel controllo per la validazione umana.\n\n**Documento di riferimento**: Fattura\n\n**Documenti coinvolti**: Fattura, SLIQ, Atto di liquidazione\n\nPer ogni controllo riporta l'esito:\n- 'VALIDATO' se il singolo controllo passa\n- 'NON_VALIDATO' altrimenti\n- Se vedi che un errore materiale è stato rettificato da un atto successivo, considera la differenza come 'GIUSTIFICATO'.\n\n### Capitoli e Impegni\nVerifica che i numeri di impegno citati nell'atto di liquidazione esistano negli atti di impegno/variante.\n\nSentenza: Se i numeri quadrano, il tuo esito è 'VALIDATO'; se ci sono differenze, ma sono spiegate chiaramente dalle `evidenze_testuali`, scrivi 'GIUSTIFICATO' e riporta lo snippet. Se trovi differenze contabili non spiegate, scrivi 'NON VALIDATO' e specifica ATTENTAMENTE la motivazione.\n\n## Output\n\nL'oggetto restitui deve contenere i seguenti valori nei campi: `esito_globale`: [\"VALIDATO\", \"NON VALIDATO\", \"WARNING\"] e un array `controlli`. Il campo `categoria` deve avere i seguenti valori:\n- \"Validazione Impegno/Liquidazione\" per i controlli relativi a:\n  * \"Fattura\";\n  * \"Importo Quadro Economico\";\n  * \"Importi Certificato e SAL\".\n- \"Validazione Codici\" per tutti gli altri controlli.\n\n**REGOLA PER LA CITAZIONE DEI DOCUMENTI**: Per incrociare i dati tra i vari rami del JSON e per citare i documenti nel tuo output finale, devi utilizzare ESCLUSIVAMENTE il valore presente nel campo `identificativo_documento`. Questo campo contiene proprio il nome esatto e comprensibile (es. \"DDPRO 308/2026\", \"Fattura 2601000001\"). Inserisci questi valori nell'array `documenti_coinvolti`.\n\n**REGOLA FONDAMENTALE (Razionale di verifica)**: Per ogni oggetto all'interno dell'array `controlli`, PRIMA di dichiarare il campo `esito`, devi **obbligatoriamente** compilare il campo testuale `razionale_di_verifica`. In questo campo spiega il tuo ragionamento logico:\n1. Quali identificativi hai letto e da quali documenti (es. \"Ho letto il CIG X dalla Fattura Y\").\n2. Quale confronto hai effettuato (es. \"Il CIG coincide con quello dell'Atto Z\").\n3. Quale regola del tuo protocollo hai applicato per arrivare alla decisione.\n4. L'esito dedotto dalla regola applicata.\n\nSolo dopo aver scritto il razionale, compila il campo `esito`.\n\n\n## Input\n\n{{ JSON.stringify($json) }}",
+        "text": "=## Mission\nLa tua missione è verificare la coerenza finanziaria della liquidazione e la giustificazione delle varianti.\n\n## Protocollo Operativo\nsegui rigorosamente il seguente protocollo operativo:\n\n### Importo Quadro Economico\nVerificare che l'importo lavori dell'ultimo quadro economico (comprese le varianti) sia riportato correttamente nell'intestazione del SAL e del Certificato di pagamento. Verificare lo stesso sul Certificato di pagamento, che include, oltre all'importo, gli oneri di sicurezza. In questo caso considerare gli importi senza IVA.\n\nPer le varianti cerca in `evidenze_testuali` riferimenti a 'varianti', 'errori materiali' o 'rettifiche' che giustificano la differenza di importo.\n\n**Documento di riferimento**: Quadro Economico\n\n**Documenti coinvolti**: Atto di impegno, Quadro Economico, SAL, Certificato di pagamento\n\n### Importi Certificato, SAL e SLIQ\nVerificare la coerenza degli importi tra tutti i Certificati di pagamento e i relativi SAL. Di solito entrambi i documenti riportano le stesse cifre. A volte il Certificato di Pagamento omette delle esplicitazioni di somme riportate solo nel SAL.\n\nConcentrati sulle cifre che incontri su ENTRAMBI i documenti. Tra i due documenti connessi tra loro, verifica:\n- importo totale in liquidazione (deve esserci in entrambi)\n- gli oneri di sicurezza deveono coincidere (se presenti)\n- Il residuo in fondo al certificato deve coincidere con quanto riportato tra i due documenti. (se presente)\n- Del certificato di pagamento verifica ATTENTAMENTE E SCRUPOLOSAMENTE che la cifra indicata in lettere (`importo_netto_in_lettere_cert_pag`) sia esattamente la cifra espressa in numeri (`importo_netto_cert_pag`)\n\n#### Confronto con SLIQ\nIl certificato di pagamento (quindi il relativo SAL), riportano il credito dell'impresa o delle imprese che sarà liquidato. La somma può essere divisa su più fatture e su più atti di impegno / capitoli / mandati della SLIQ.\n\nE' fondamentale che le cifre finali siano coerenti al centesimo con l'importo della SLIQ. In particolare:\n- `importo_totale_liquidazione` della sliq è il lordo da riconoscere. \n- `totale_detrazioni` della SLIQ deve essere la somma degli imponibili riportati sulle fatture e sui certificati di pagamento (coerentemente con il regime fiscale applicato)\n- `importo_netto_cert_pag` relativi a tutti i certificati di pagamento deve corrispondere a quanto viene liquidato in SLIQ, al netto delle detrazioni\n\n**Documento di riferimento**: Certificato di pagamento\n\n**Documenti coinvolti**: SAL, Certificato di pagamento, SLIQ\n\nSii preciso al centesimo.\nFai i calcoli conoscendo le regole sui regimi fiscali applicati. \n\nPer ogni controllo riporta l'esito:\n- 'VALIDATO' se il singolo controllo passa\n- 'NON_VALIDATO' altrimenti\n\n### Fattura\n\nVerificare che gli importi siano coerenti tra le fatture e SLIQ, così come Numero e Data della fattura. Concentrati sui singoli mandati di ogni SLIQ e le fatture citate.\nVerifica rigorosamente che il campo `importo_totale` dell'`atto_di_liquidazione` sia identico spaccato al centesimo all'`importo_totale_liquidazione` della sliq.\n\n**Analisi IVA**: Se riscontri una differenza tra importo liquidato e totale fattura, verifica se la differenza è dovuta all'IVA o al regime fiscale dell'IVA. Il regime fiscale lo ritrovi nella fattura corrispondente (`documenti_contabili.fatture[X].regime_fiscale_iva`). Riporta questa informazione nel controllo per la validazione umana.\n\n**Documento di riferimento**: Fattura\n\n**Documenti coinvolti**: Fattura, SLIQ, Atto di liquidazione\n\nPer ogni controllo riporta l'esito:\n- 'VALIDATO' se il singolo controllo passa\n- 'NON_VALIDATO' altrimenti\n- Se vedi che un errore materiale è stato rettificato da un atto successivo, considera la differenza come 'GIUSTIFICATO'.\n\n### Capitoli e Impegni\nVerifica che i numeri di impegno citati nell'atto di liquidazione esistano negli atti di impegno/variante.\n\nSentenza: Se i numeri quadrano, il tuo esito è 'VALIDATO'; se ci sono differenze, ma sono spiegate chiaramente dalle `evidenze_testuali`, scrivi 'GIUSTIFICATO' e riporta lo snippet. Se trovi differenze contabili non spiegate, scrivi 'NON VALIDATO' e specifica ATTENTAMENTE la motivazione.\n\n## Output\n\nL'oggetto restitui deve contenere i seguenti valori nei campi: `esito_globale`: [\"VALIDATO\", \"NON VALIDATO\", \"WARNING\"] e un array `controlli`. Il campo `categoria` deve avere i seguenti valori:\n- \"Validazione Impegno/Liquidazione\" per i controlli relativi a:\n  * \"Fattura\";\n  * \"Importo Quadro Economico\";\n  * \"Importi Certificato e SAL\".\n- \"Validazione Codici\" per tutti gli altri controlli.\n\n**REGOLA PER LA CITAZIONE DEI DOCUMENTI**: Per incrociare i dati tra i vari rami del JSON e per citare i documenti nel tuo output finale, devi utilizzare ESCLUSIVAMENTE il valore presente nel campo `identificativo_documento`. Questo campo contiene proprio il nome esatto e comprensibile (es. \"DDPRO 308/2026\", \"Fattura 2601000001\"). Inserisci questi valori nell'array `documenti_coinvolti`.\n\n**REGOLA FONDAMENTALE (Razionale di verifica)**: Per ogni oggetto all'interno dell'array `controlli`, PRIMA di dichiarare il campo `esito`, devi **obbligatoriamente** compilare il campo testuale `razionale_di_verifica`. In questo campo spiega il tuo ragionamento logico:\n1. Quali identificativi hai letto e da quali documenti (es. \"Ho letto il CIG X dalla Fattura Y\").\n2. Quale confronto hai effettuato (es. \"Il CIG coincide con quello dell'Atto Z\").\n3. Quale regola del tuo protocollo hai applicato per arrivare alla decisione.\n4. L'esito dedotto dalla regola applicata.\n\nSolo dopo aver scritto il razionale, compila il campo `esito`.\n\n\n",
         "hasOutputParser": true,
-        "options": {}
+        "options": {
+          "systemMessage": "=## Input\n\n{{ JSON.stringify($json) }}\n\n## ROLE\nSei il Responsabile della Ragioneria del Comune di Bologna. "
+        }
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 3.1,
       "position": [
-        1504,
-        672
+        0,
+        288
       ],
-      "id": "761d1ea6-4d69-4563-8bfa-520e79c49d91",
+      "id": "68ae20d5-f62f-4054-a20e-6fa99f2b0efc",
       "name": "Agente Contabile"
     },
     {
@@ -96,72 +77,76 @@
       "type": "@n8n/n8n-nodes-langchain.toolCalculator",
       "typeVersion": 1,
       "position": [
-        928,
-        1488
+        -576,
+        1200
       ],
-      "id": "6a2cedd8-a20f-4a6e-a3aa-3aaba4695aca",
+      "id": "6485cf03-4c49-444d-9625-6e9fc06cf576",
       "name": "Calculator"
     },
     {
       "parameters": {
         "toolDescription": "Ottiene dettagli su codice iva esplicitato in SAP",
-        "url": "=http://atti-backend-api:8500/api/iva-code-detail?iva_code={{ $fromAI('codice_iva') }}",
+        "url": "=http://backend.verificaatti:8500/api/iva-code-detail?iva_code={{ $fromAI('codice_iva') }}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequestTool",
       "typeVersion": 4.4,
       "position": [
-        656,
-        1488
+        -848,
+        1200
       ],
-      "id": "b98a1e49-a4b5-4537-906f-95fa15b9b310",
+      "id": "2e068f9e-fb98-4b04-8a4b-15ccc1f778c9",
       "name": "tool_iva_code"
     },
     {
       "parameters": {
         "promptType": "define",
-        "text": "=Sei un esperto Contabile per il Comune di Bologna, specializzato su atti relativi a Lavori Pubblici.\n\nHai dei compiti precisi che ti sono stati assegnati per la verifica dei documenti riportati.\n\n## PROTOCOLLO DI VERIFICA\n\nEsegui controlli rigorosi e pignoli seguendo la seguente lista di controlli:\n* **Capitolo di spesa**: Controllare la corrispondenza tra impegno e SLIQ. Implementare la logica esplicita che se non coincide, cercare la \"R\" iniziale nel capitolo della SLIQ (Riaccertamento dei residui)\n\n* **Conto Finanziario di V Livello**: Verificare la coerenza tra liquidazione e impegno. Segnala un 'WARNING' se non passa il controllo di coerenza, 'VALIDATO' altrimenti. Per conoscere il dettaglio della descrizione del codice, puoi utilizzare il tool `tool_siope_lookup` specificando il parametro `code` con i valori di Conto Finanziario V livello riscontrati.\n\n* **Coerenza CDR e Giroconto**: Controllare che il codice CDR sia identico tra tutti gli atti di Impegno e Atto di liquidazione. Se manca un atto di di impegno o l'atto di liquidazione segnala un 'ERRORE'.\nSe diverge, cercare negli atti amministrativi la presenza di un \"Atto di giroconto\" che giustifichi la differenza. Puoi cercare tra tutti i documenti citati nella `mappatura_documentale` o nella sezione `evidenze_testuali`. Se c'è differenza ed è giustificata, riporta lo stato specifico 'GIUSTIFICATA'.\n\n## Output\n\nL'oggetto restitui deve contenere i seguenti valori nei campi: `categoria`: \"Validazione codici\", `esito_globale`: [\"VALIDATO\", \"NON VALIDATO\", \"WARNING\"] e un array `controlli`.\n\n**REGOLA PER LA CITAZIONE DEI DOCUMENTI**: Per incrociare i dati tra i vari rami del JSON e per citare i documenti nel tuo output finale, devi utilizzare ESCLUSIVAMENTE il valore presente nel campo `identificativo_documento`. Questo campo contiene proprio il nome esatto e comprensibile (es. \"DDPRO 308/2026\", \"Fattura 2601000001\"). Inserisci questi valori nell'array `documenti_coinvolti`.\n\n**REGOLA FONDAMENTALE (Razionale di verifica)**: Per ogni oggetto all'interno dell'array `controlli`, PRIMA di dichiarare il campo `esito`, devi **obbligatoriamente** compilare il campo testuale `razionale_di_verifica`. In questo campo spiega il tuo ragionamento logico:\n1. Quali identificativi hai letto e da quali documenti (es. \"Ho letto il CIG X dalla Fattura Y\").\n2. Quale confronto hai effettuato (es. \"Il CIG coincide con quello dell'Atto Z\").\n3. Quale regola del tuo protocollo hai applicato per arrivare alla decisione.\n4. L'esito dedotto dalla regola applicata.\n\nSolo dopo aver scritto il razionale, compila il campo `esito`.\n\n## INPUT\n\n{{ JSON.stringify($json) }}",
+        "text": "=## Mission\nHai dei compiti precisi che ti sono stati assegnati per la verifica dei documenti riportati.\n\n## PROTOCOLLO DI VERIFICA\n\nEsegui controlli rigorosi e pignoli seguendo la seguente lista di controlli:\n* **Capitolo di spesa**: Controllare la corrispondenza tra impegno e SLIQ. Implementare la logica esplicita che se non coincide, cercare la \"R\" iniziale nel capitolo della SLIQ (Riaccertamento dei residui)\n\n* **Conto Finanziario di V Livello**: Verificare la coerenza tra liquidazione e impegno. Segnala un 'WARNING' se non passa il controllo di coerenza, 'VALIDATO' altrimenti. Per conoscere il dettaglio della descrizione del codice, puoi utilizzare il tool `tool_siope_lookup` specificando il parametro `code` con i valori di Conto Finanziario V livello riscontrati.\n\n* **Coerenza CDR e Giroconto**: Controllare che il codice CDR sia identico tra tutti gli atti di Impegno e Atto di liquidazione. Se manca un atto di di impegno o l'atto di liquidazione segnala un 'ERRORE'.\nSe diverge, cercare negli atti amministrativi la presenza di un \"Atto di giroconto\" che giustifichi la differenza. Puoi cercare tra tutti i documenti citati nella `mappatura_documentale` o nella sezione `evidenze_testuali`. Se c'è differenza ed è giustificata, riporta lo stato specifico 'GIUSTIFICATA'.\n\n## Output\n\nL'oggetto restitui deve contenere i seguenti valori nei campi: `categoria`: \"Validazione codici\", `esito_globale`: [\"VALIDATO\", \"NON VALIDATO\", \"WARNING\"] e un array `controlli`.\n\n**REGOLA PER LA CITAZIONE DEI DOCUMENTI**: Per incrociare i dati tra i vari rami del JSON e per citare i documenti nel tuo output finale, devi utilizzare ESCLUSIVAMENTE il valore presente nel campo `identificativo_documento`. Questo campo contiene proprio il nome esatto e comprensibile (es. \"DDPRO 308/2026\", \"Fattura 2601000001\"). Inserisci questi valori nell'array `documenti_coinvolti`.\n\n**REGOLA FONDAMENTALE (Razionale di verifica)**: Per ogni oggetto all'interno dell'array `controlli`, PRIMA di dichiarare il campo `esito`, devi **obbligatoriamente** compilare il campo testuale `razionale_di_verifica`. In questo campo spiega il tuo ragionamento logico:\n1. Quali identificativi hai letto e da quali documenti (es. \"Ho letto il CIG X dalla Fattura Y\").\n2. Quale confronto hai effettuato (es. \"Il CIG coincide con quello dell'Atto Z\").\n3. Quale regola del tuo protocollo hai applicato per arrivare alla decisione.\n4. L'esito dedotto dalla regola applicata.\n\nSolo dopo aver scritto il razionale, compila il campo `esito`.\n\n",
         "hasOutputParser": true,
-        "options": {}
+        "options": {
+          "systemMessage": "=## INPUT\n\n{{ JSON.stringify($json) }}\n\n## ROLE\nSei un esperto Contabile per il Comune di Bologna, specializzato su atti relativi a Lavori Pubblici."
+        }
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 3.1,
       "position": [
-        1504,
-        880
+        0,
+        496
       ],
-      "id": "0d52a319-1d91-4b8e-82ae-e319325c84d6",
+      "id": "469da5fa-03a1-4aa5-b436-4d5c68ccf2ff",
       "name": "Agente Armonizzazione Contabile"
     },
     {
       "parameters": {
         "toolDescription": "Ottiene dettagli su codice iva esplicitato in SAP",
-        "url": "=http://atti-backend-api:8500/api/siope-details?code={{ $fromAI('code') }}",
+        "url": "=http://backend.verificaatti:8500/api/siope-details?code={{ $fromAI('code') }}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequestTool",
       "typeVersion": 4.4,
       "position": [
-        1056,
-        1488
+        -448,
+        1200
       ],
-      "id": "b753ee9e-6e7f-4099-8ced-8b4ba730a8db",
+      "id": "356533de-5d47-437a-bae0-86c41e296c9b",
       "name": "tool_siope_lookup"
     },
     {
       "parameters": {
         "promptType": "define",
-        "text": "=Sei un esperto amministrativo del Comune di Bologna, specializzato negli atti di liquidazione di Lavori Pubblici.\nHai un compito preciso: assicurarti che le tempistiche e i testi abbiano senso logico, gestendo le \"anomalie amministrative\".\n\n## CONTROLLI\n\nEsegui in maniera rigorosa e pignola i seguenti controlli:\n1. **Cronologia**: Verificare che la data dell'atto di impegno sia sempre precedente alla data della fattura. Se negativo, emettere 'WARNING', altrimenti 'VALIDATO'. Valida questo per ogni impegno e relativa fattura. Non saltare nessun documento.\n\n2. **Coerenza Oggetto**: Leggere la descrizione dell'atto di Impegno e confrontarla con le righe della Fattura o l'oggetto dell'atto di liquidazione, per validare che cosa viene liquidato corrisponda a cosa era stato impegnato. Della fattura considera la `descrizione_prestazione`.\n\n3. **IBAN e Partita IVA/CF**: Controlla attentamente che l'IBAN e la Partita IVA/CF riportati sulle fatture sianno gli stessi riportati sulle SLIQ. Non fermarti ad una SLIQ o una fattura. Verifica tutte le fatture, tutte le SLIQ e tutti i mandati in esse contenuti.\n\n4. **Fornitore**: Verifica che il fornitore che ha rilasciato la fattura è esattamente quello riportato sulle SLIQ, nei singoli mandati. Ricorda che SLIQ e Fatture sono collegate dalle citazioni che trovi in input.\n\n## OUTPUT\n\nL'oggetto restitui deve contenere i seguenti valori nei campi: `categoria`: \"Validazione Impegno/Liquidazione\", `esito_globale`: [\"VALIDATO\", \"NON VALIDATO\", \"WARNING\"] e un array `controlli`.\n\n**REGOLA PER LA CITAZIONE DEI DOCUMENTI**: Per incrociare i dati tra i vari rami del JSON e per citare i documenti nel tuo output finale, devi utilizzare ESCLUSIVAMENTE il valore presente nel campo `identificativo_documento`. Questo campo contiene proprio il nome esatto e comprensibile (es. \"DDPRO 308/2026\", \"Fattura 2601000001\"). Inserisci questi valori nell'array `documenti_coinvolti`.\n\n**REGOLA FONDAMENTALE (Razionale di verifica)**: Per ogni oggetto all'interno dell'array `controlli`, PRIMA di dichiarare il campo `esito`, devi **obbligatoriamente** compilare il campo testuale `razionale_di_verifica`. In questo campo spiega il tuo ragionamento logico:\n1. Quali identificativi hai letto e da quali documenti (es. \"Ho letto il CIG X dalla Fattura Y\").\n2. Quale confronto hai effettuato (es. \"Il CIG coincide con quello dell'Atto Z\").\n3. Quale regola del tuo protocollo hai applicato per arrivare alla decisione.\n4. L'esito dedotto dalla regola applicata.\n\nSolo dopo aver scritto il razionale, compila il campo `esito`.\n\n\n## INPUT\n\n{{ JSON.stringify($json) }}",
+        "text": "=## Mission\nHai un compito preciso: assicurarti che le tempistiche e i testi abbiano senso logico, gestendo le \"anomalie amministrative\".\n\n## CONTROLLI\n\nEsegui in maniera rigorosa e pignola i seguenti controlli:\n1. **Cronologia**: Verificare che la data dell'atto di impegno sia sempre precedente alla data della fattura. Se negativo, emettere 'WARNING', altrimenti 'VALIDATO'. Valida questo per ogni impegno e relativa fattura. Non saltare nessun documento.\n\n2. **Coerenza Oggetto**: Leggere la descrizione dell'atto di Impegno e confrontarla con le righe della Fattura o l'oggetto dell'atto di liquidazione, per validare che cosa viene liquidato corrisponda a cosa era stato impegnato. Della fattura considera la `descrizione_prestazione`.\n\n3. **IBAN e Partita IVA/CF**: Controlla attentamente che l'IBAN e la Partita IVA/CF riportati sulle fatture sianno gli stessi riportati sulle SLIQ. Non fermarti ad una SLIQ o una fattura. Verifica tutte le fatture, tutte le SLIQ e tutti i mandati in esse contenuti.\n\n4. **Fornitore**: Verifica che il fornitore che ha rilasciato la fattura è esattamente quello riportato sulle SLIQ, nei singoli mandati. Ricorda che SLIQ e Fatture sono collegate dalle citazioni che trovi in input.\n\n## OUTPUT\n\nL'oggetto restitui deve contenere i seguenti valori nei campi: `categoria`: \"Validazione Impegno/Liquidazione\", `esito_globale`: [\"VALIDATO\", \"NON VALIDATO\", \"WARNING\"] e un array `controlli`.\n\n**REGOLA PER LA CITAZIONE DEI DOCUMENTI**: Per incrociare i dati tra i vari rami del JSON e per citare i documenti nel tuo output finale, devi utilizzare ESCLUSIVAMENTE il valore presente nel campo `identificativo_documento`. Questo campo contiene proprio il nome esatto e comprensibile (es. \"DDPRO 308/2026\", \"Fattura 2601000001\"). Inserisci questi valori nell'array `documenti_coinvolti`.\n\n**REGOLA FONDAMENTALE (Razionale di verifica)**: Per ogni oggetto all'interno dell'array `controlli`, PRIMA di dichiarare il campo `esito`, devi **obbligatoriamente** compilare il campo testuale `razionale_di_verifica`. In questo campo spiega il tuo ragionamento logico:\n1. Quali identificativi hai letto e da quali documenti (es. \"Ho letto il CIG X dalla Fattura Y\").\n2. Quale confronto hai effettuato (es. \"Il CIG coincide con quello dell'Atto Z\").\n3. Quale regola del tuo protocollo hai applicato per arrivare alla decisione.\n4. L'esito dedotto dalla regola applicata.\n\nSolo dopo aver scritto il razionale, compila il campo `esito`.\n\n",
         "hasOutputParser": true,
-        "options": {}
+        "options": {
+          "systemMessage": "=## INPUT\n\n{{ JSON.stringify($json) }}\n\n## ROLE\nSei un esperto amministrativo del Comune di Bologna, specializzato negli atti di liquidazione di Lavori Pubblici."
+        }
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 3.1,
       "position": [
-        1504,
-        1104
+        0,
+        720
       ],
-      "id": "56b861ac-11fa-4024-9873-be3efe9fe431",
+      "id": "9d350ba0-c8bc-499f-9ec0-55438cc585b4",
       "name": "Agente di Conformità Amministrativa e Temporale"
     },
     {
@@ -172,10 +157,10 @@
       "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
       "typeVersion": 1.3,
       "position": [
-        1808,
-        1472
+        304,
+        1280
       ],
-      "id": "47a4a491-de07-4cf4-8070-c43e081b7abf",
+      "id": "a06b090d-0782-4299-86ee-9482074c0f68",
       "name": "Structured Output Parser"
     },
     {
@@ -183,26 +168,28 @@
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.2,
       "position": [
-        2688,
-        688
+        1184,
+        400
       ],
-      "id": "1f2f54c1-9178-4d1b-bf00-f4e0d54ff8bd",
+      "id": "dc700692-db90-4ab8-a124-b9fcdf05e4c6",
       "name": "Merge"
     },
     {
       "parameters": {
         "promptType": "define",
-        "text": "=**Ruolo**: Sei l'Agente Supervisore (Arbitro Finale) del Comune di Bologna, responsabile della validazione di ultima istanza degli atti di liquidazione per i Lavori Pubblici.\n\n**Obiettivo**: Ricevi in input i report di controllo generati da 5 agenti specialistici (Tracciabilità, Armonia Contabile, Soggetti e Poteri, Ragioneria/Contabile, Conformità Amministrativa). Il tuo compito non è rieseguire l'estrazione dai documenti grezzi, ma valutare il lavoro degli agenti, verificare la completezza del processo (audit) e redigere il \"Verbale di Validazione Finale\" per supportare la decisione (\"Human-in-the-Loop\").\n\n## PROTOCOLLO DI SUPERVISIONE\nEsegui rigorosamente i seguenti passaggi logici:\n1. Verifica di Completezza (Audit del Processo):\n    * Assicurati che l'input contenga le risposte di tutte e 5 le macro-categorie previste dal protocollo.\n    * Conta il numero totale dei controlli effettuati.\n2. Risoluzione e Aggregazione (Filtro del Rumore):\n    * Tutti i controlli che riportano esito \"VALIDATO\" o \"GIUSTIFICATO\" indicano che la pratica è conforme per quel dominio. Non serve riportare i dettagli di questi controlli nel riepilogo delle anomalie, ma vanno conteggiati a fini statistici.\n    * Individua e isola tutti i controlli con esito \"NON_VALIDATO\". Questi costituiscono Anomalie Bloccanti (Errori).\n    * Individua e isola tutti i controlli con esito \"WARNING\". Questi richiedono Azione Umana (es. verificare una motivazione testuale per CIG difformi o richiedere una PEC per impegni non citati in fattura).\n3. Determinazione dell'Esito Finale della Pratica:\n    * Se c'è anche solo un controllo \"NON_VALIDATO\", l'esito della pratica è \"BOCCIATA\".\n    * Se non ci sono errori bloccanti, ma è presente almeno un \"WARNING\", l'esito della pratica è \"DA_REVISIONARE\".\n    * Se tutti i controlli di tutti gli agenti sono \"VALIDATO\" o \"GIUSTIFICATO\", l'esito della pratica è \"APPROVATA\".\n4. Istruzioni per l'Operatore (Human-in-the-Loop):\n    * Per ogni \"WARNING\" o \"NON_VALIDATO\" riscontrato, devi tradurre il razionale_di_verifica dell'agente specialista in una chiara indicazione operativa per l'umano, evidenziando su quali documenti esatti deve concentrare la sua attenzione.\n\n## INPUT\n\n{{ JSON.stringify($json.controlli) }}",
+        "text": "=## Obiettivo\nRicevi in input i report di controllo generati da 6 agenti specialistici (Tracciabilità, Armonia Contabile, Soggetti e Poteri, Ragioneria/Contabile, Conformità Amministrativa, Verifica Beneficiari). Il tuo compito non è rieseguire l'estrazione dai documenti grezzi, ma valutare il lavoro degli agenti, verificare la completezza del processo (audit) e redigere il \"Verbale di Validazione Finale\" per supportare la decisione (\"Human-in-the-Loop\").\n\n## PROTOCOLLO DI SUPERVISIONE\nEsegui rigorosamente i seguenti passaggi logici:\n1. Verifica di Completezza (Audit del Processo):\n    * Assicurati che l'input contenga le risposte di tutte e 5 le macro-categorie previste dal protocollo.\n    * Conta il numero totale dei controlli effettuati.\n2. Risoluzione e Aggregazione (Filtro del Rumore):\n    * Tutti i controlli che riportano esito \"VALIDATO\" o \"GIUSTIFICATO\" indicano che la pratica è conforme per quel dominio. Non serve riportare i dettagli di questi controlli nel riepilogo delle anomalie, ma vanno conteggiati a fini statistici.\n    * Individua e isola tutti i controlli con esito \"NON_VALIDATO\". Questi costituiscono Anomalie Bloccanti (Errori).\n    * Individua e isola tutti i controlli con esito \"WARNING\". Questi richiedono Azione Umana (es. verificare una motivazione testuale per CIG difformi o richiedere una PEC per impegni non citati in fattura).\n3. Determinazione dell'Esito Finale della Pratica:\n    * Se c'è anche solo un controllo \"NON_VALIDATO\", l'esito della pratica è \"BOCCIATA\".\n    * Se non ci sono errori bloccanti, ma è presente almeno un \"WARNING\", l'esito della pratica è \"DA_REVISIONARE\".\n    * Se tutti i controlli di tutti gli agenti sono \"VALIDATO\" o \"GIUSTIFICATO\", l'esito della pratica è \"APPROVATA\".\n4. Istruzioni per l'Operatore (Human-in-the-Loop):\n    * Per ogni \"WARNING\" o \"NON_VALIDATO\" riscontrato, devi tradurre il `razionale_di_verifica` dell'agente specialista in una chiara indicazione operativa per l'umano, evidenziando su quali documenti esatti deve concentrare la sua attenzione.\n\n",
         "hasOutputParser": true,
-        "options": {}
+        "options": {
+          "systemMessage": "=## INPUT\n\n{{ JSON.stringify($json.controlli) }}\n\n## ROLE\nSei l'Agente Supervisore (Arbitro Finale) del Comune di Bologna, responsabile della validazione di ultima istanza degli atti di liquidazione per i Lavori Pubblici.\n"
+        }
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 3.1,
       "position": [
-        2352,
-        848
+        848,
+        560
       ],
-      "id": "326448d8-6f70-42c7-853d-746c4bfc2eca",
+      "id": "be37a887-4d89-48f3-b2c8-e02711a3106f",
       "name": "Agente Supervisor"
     },
     {
@@ -214,23 +201,23 @@
       "type": "n8n-nodes-base.aggregate",
       "typeVersion": 1,
       "position": [
-        2160,
-        672
+        656,
+        384
       ],
-      "id": "cfef91d1-e447-4f9e-8f98-13f0bd5caa49",
+      "id": "1ed2b2eb-3f7b-40b0-ac83-106dd9420d58",
       "name": "Aggregate"
     },
     {
       "parameters": {
-        "numberInputs": 5
+        "numberInputs": 6
       },
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.2,
       "position": [
-        1952,
-        624
+        448,
+        336
       ],
-      "id": "0677ffbe-84ee-4223-9c73-cfd309d64faa",
+      "id": "c19bc45f-80cf-4ffb-afd6-d8ee5c80eb2d",
       "name": "Merge Agenti"
     },
     {
@@ -242,10 +229,10 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2.1,
       "position": [
-        -1456,
-        656
+        -2960,
+        368
       ],
-      "id": "81a2ae57-331d-455e-abe0-eb5c20cc86ab",
+      "id": "479d75ff-a1d7-4706-84dc-adb346f204b8",
       "name": "Webhook",
       "webhookId": "b8614586-93fc-4f1d-acb2-326fe1b532d4"
     },
@@ -257,10 +244,10 @@
       "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
       "typeVersion": 1.3,
       "position": [
-        2496,
-        1072
+        992,
+        784
       ],
-      "id": "f96fb78d-2b74-4aa5-8230-0d1ae9045394",
+      "id": "6295b9cc-9d5a-42ed-a382-d267f4c5164f",
       "name": "Structured Output Parser1"
     },
     {
@@ -272,10 +259,10 @@
       "type": "n8n-nodes-base.aggregate",
       "typeVersion": 1,
       "position": [
-        2864,
-        688
+        1360,
+        400
       ],
-      "id": "083a2866-fe17-42c5-805a-786589ebdd0d",
+      "id": "e972619f-9d6b-4211-8256-e19314ca9df4",
       "name": "Aggregate1"
     },
     {
@@ -284,17 +271,17 @@
       },
       "type": "n8n-nodes-base.stickyNote",
       "position": [
-        1504,
-        1360
+        -16,
+        1312
       ],
       "typeVersion": 1,
-      "id": "dc6cd77e-96af-43da-bfb5-6be3e2de30d3",
+      "id": "156f0d59-fffd-4e12-bbd7-6cb20e30a2c7",
       "name": "Sticky Note"
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "http://atti-backend-api:8500/api/v1/verifica-atti/webhook-callback",
+        "url": "http://backend.verificaatti:8500/api/v1/verifica-atti/webhook-callback",
         "sendBody": true,
         "bodyParameters": {
           "parameters": [
@@ -313,10 +300,10 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
-        3056,
-        688
+        1552,
+        400
       ],
-      "id": "63da4183-40a5-406b-84dd-301438317d00",
+      "id": "9d876cca-c1fb-4baf-9344-7467dc5b8b4f",
       "name": "HTTP Request1"
     },
     {
@@ -326,48 +313,29 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -1040,
-        656
+        -2544,
+        368
       ],
-      "id": "2d231e8e-96e3-47e9-8999-cf4420306d5c",
+      "id": "c190997a-66ac-4075-b72b-1e1e657cc5db",
       "name": "Code in JavaScript"
     },
     {
       "parameters": {
-        "modelName": "models/gemini-3-flash-preview",
-        "options": {}
-      },
-      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
-      "typeVersion": 1,
-      "position": [
-        -272,
-        1360
-      ],
-      "id": "0bcad6c7-8213-4452-a92b-c8b6c182d045",
-      "name": "Google Gemini Chat Model",
-      "credentials": {
-        "googlePalmApi": {
-          "id": "hNx7divvgQJCYwvz",
-          "name": "Google Gemini(PaLM) Api account"
-        }
-      }
-    },
-    {
-      "parameters": {
         "promptType": "define",
-        "text": "=Analizza questi documenti ed estrai unicamente un array con i nomi ufficiali e comprensibili di ciascun documento. Usa questo formato: ['DDPRO 308/2026', 'Fattura 2601000001', 'Liquidazione 726000268'].\n\n\n## DATI DOCUMENTI:\n\n### Manifesto immagini\n{{ $json.manifesto_immagini }}\n\nNota bene: Le immagini sono allegate a questo prompt esattamente nell'ordine descritto qui sopra.\n\n### TESTO\n{{ JSON.stringify($json.documenti) }}",
+        "text": "=## Mission\n\nAnalizza questi documenti ed estrai unicamente un array con i nomi ufficiali e comprensibili di ciascun documento. Dove possibile cita il codice del documento (es numero della Determina Dirigenziale o Delibera di Giunta DD, DDPRO, DGPRO, ecc).\n\nTi troverai documenti relativi ad atti di liquidazione di lavori pubblici, in particolare:\n- Atto di liquidazione\n- Atto di impegno (anche più di uno)\n- Quadro Economico (anche più di uno)\n- Fattura (anche più di una)\n- Proposta di liquidazione del RUP (opzionale o anche più di uno)\n- SAL (opzionale, dipende dal tipo di liquidazione, ma può essercene anche più di uno)\n- Certificato di pagamento (valgono le stesse regole del SAL)\n- SLIQ (sono tabelle di solito allegate all'atto di liquidazione. Assegna un codice specifico per la SLIQ)\n- Atti di delega (opzionali)\n- Atto di nomina (opzionali)\n- PEC (opzionali)\n- Atto di giroconto (opzionale)\n- Atto di variazione di V livello (opzionale)\n- DURC (anche più di uno, ma comunque opzionali)\n\n## OUTPUT\n\nSe hai 10 file in input non è detto che il tuo output debba avere 10 entries, potresti averne di più. Ogni identificativo deve rappresentare esattamente un file.\nGenera un array usando questo formato: ['DDPRO 123/2023', 'Fattura 123456', 'Liquidazione 98765']. \n\n\n",
         "hasOutputParser": true,
         "options": {
+          "systemMessage": "=## DATI DOCUMENTI:\n\n### Manifesto immagini\n{{ $json.manifesto_immagini }}\n\nNota bene: Le immagini sono allegate a questo prompt esattamente nell'ordine descritto qui sopra.\n\n### TESTO\n{{ JSON.stringify($json.documenti) }}\n\n## ROLE\n\nSei un esperto di documenti amministrativi e di Ragioneria di lavori pubblici del Comune di Bologna.",
           "passthroughBinaryImages": true
         }
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 3.1,
       "position": [
-        -848,
-        816
+        -2352,
+        528
       ],
-      "id": "0636772d-cf73-4bad-b420-ee8c7e14fbba",
+      "id": "3492dc37-b2ef-40c1-a700-2a11fd3e3623",
       "name": "Estrattore identificativi"
     },
     {
@@ -377,25 +345,27 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -352,
-        672
+        -1856,
+        384
       ],
-      "id": "dea41372-8d99-41dc-afa4-277dd69c5ae0",
+      "id": "9168e978-3372-48a4-beaf-9e993b44e251",
       "name": "Code in JavaScript1"
     },
     {
       "parameters": {
         "promptType": "define",
-        "text": "=Role: Agente Specialista in Estrazione Dati per la Contabilità Pubblica (Comune di Bologna).\n\n# MISSIONE\nAnalizza il pacchetto di file forniti (testi estratti dai documenti di liquidazione). Devi mappare l'intero ecosistema della pratica senza formulare giudizi, agendo con estrema pignoleria.\n\nIl tuo unico scopo è scovare codici. Se un codice appare in {{ $json.output.lista_identificativi.length }} documenti, devi creare {{ $json.output.lista_identificativi.length }} relazioni. Non fermarti ai primi risultati.\n\n**PROTOCOLLO IMPERATIVO:** Controlla maniacalmente le tabelle tecniche delle SLIQ e dei SAL e degli altri documenti coinvolti. \n\n## File attesi\n\nDevi aspettarti i seguenti documenti, non per forza divisi in file diversi:\n- Atto di liquidazione\n- diversi Atti di impegno\n- Quadro Economico\n- Fattura o fatture\n- diverse Proposte di liquidazione del RUP\n- diversi SAL\n- diversi Certificati di pagamento\n- diverse SLIQ\n- Atto di nomina\n- Atti di delega (opzionale)\n- Atto di giroconto (opzionale)\n- Atto di variazione di V livello (opzionale)\n\n## Mappatura documentale\n\nEstrai i documenti e le informazioni come specificato di seguito. Per l'identificativo dei documenti usa esclusivamente la lista fornita: [{{ $json.output.lista_identificativi }}].\n\n## CODICI: PROTOCOLLO OPERATIVO\nSegui scrupolosamente il protocollo operativo per l'estrazione dei seguenti codici. Per semplicità riporto quali sono i documenti da analizzare, ma vai in fondo ai documenti e alle tabelle in essi contenuti\n\n### Numero di Impegno\n\nCerca il numero dell'impegno nei seguenti documenti:\n- Atto di liquidazione\n- Atti di impegno (tutti)\n- tutte le SLIQ e relativi mandati\n\nRiporta tutte le istanze\n\n### Capitolo\n\nCerca il codice del capitolo nei seguenti documenti:\n- Atto di liquidazione\n- Atti di impegno (tutti)\n- tutte le SLIQ e relativi mandati\n\nE' un codice che inizia per 'R' o 'U'\n\nRiporta tutte le istanze\n\n\n### CDR (Centro di Responsabilità)\n\nCerca il numero del CdR nei seguenti documenti:\n- Atto di liquidazione\n- Atti di impegno (tutti)\n- tutte le SLIQ e relativi mandati\n- Atti di giroconto. La presenza di questo file è opzionale. Se c'è, analizzalo in fondo\n\nRiporta tutte le istanze\n\n### Conto finanziario V livello\n\nCerca il codice del Conto V livello nei seguenti documenti:\n- Atto di liquidazione\n- Atti di impegno (tutti)\n- tutte le SLIQ e relativi mandati\n- Atto di variazione di V livello. La presenza di questo file è opzionale. Se c'è, analizzalo in fondo\n\nRiporta tutte le istanze\n\n### Codice intervento\n\nCerca il Codice Intervento nei seguenti documenti:\n- Atto di liquidazione\n- Atti di impegno (tutti)\n- tutte le SLIQ e relativi mandati\n- Tutte le fatture\n- Tutte le Proposte di liquidazione del RUP\n- Tutti i SAL\n- Tutti i Certificati di Pagamento\n\nNei documenti protresti trovare il codice con diversi nomi (es. Codice Intervento, Cod. Int., C.I., CI)\n\nRiporta tutte le istanze\n\n### Codice CUP\n\nCerca il CUP (Codice Unico di Progetto) nei seguenti documenti:\n- Atto di liquidazione\n- Atti di impegno (tutti)\n- tutte le SLIQ e relativi mandati\n- Tutte le fatture\n- Tutte le Proposte di liquidazione del RUP (presenza del codice opzionale)\n- Tutti i SAL (presenza del codice opzionale)\n- Tutti i Certificati di Pagamento (presenza del codice opzionale)\n\nRiporta tutte le istanze\nIn alcuni file la presenza del codice è opzionale, ma tu cercala lo stesso.\n\n### Codice CIG\n\nCerca il CIG (Codice Identificativo Gara) nei seguenti documenti:\n- Atto di liquidazione\n- Atti di impegno (tutti)\n- tutte le SLIQ e relativi mandati\n- Tutte le fatture\n- Tutte le Proposte di liquidazione del RUP (presenza del codice opzionale)\n\nRiporta tutte le istanze\nIn alcuni file la presenza del codice è opzionale, ma tu cercala lo stesso.\n\n### Protocollo Impegno\n\nCerca il protocollo impegno nei seguenti documenti:\n- tutti gli Atto di impegno\n- tutte le Fatture\n- tutte le SLIQ e relativi Mandati\n\nRiporta tutte le istanze\n\n### Codice contratto o Numero di repertorio\n\nCerca il Codice contratto e il Numero di repertorio nei seguenti documenti:\n- Atto di liquidazione\n- tutte le Proposte di liquidazione del RUP\n- tutti i SAL\n- tutti i Certificati di pagamento\n\nL'informazione deve essere citata in tutti i documenti elencati, ma potrebbe comparire a volte come Codice Contratto altre volte come Numero di Repertorio.\nRiporta tutte le istanze riscontrate.\n\n# OUTPUT\n\nPer il tuo output considera esclusivamente il seguente schema JSON. Restituisci quello senza altro testo.\nRispondi esclusivamente con il codice JSON. Non aggiungere testo prima o dopo.\n\n```\njson\n{\n  \"type\": \"object\",\n  \"properties\": {\n    \"output\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"identificativi\": {\n          \"type\": \"object\",\n          \"properties\": {\n            \"cig\": { \"type\": \"array\", \"items\": { \"type\": \"object\", \"properties\": { \"identificativo_documento\": { \"type\": \"string\" }, \"valore\": { \"type\": \"string\" } }, \"required\": [\"identificativo_documento\", \"valore\"] } },\n            \"cup\": { \"type\": \"array\", \"items\": { \"type\": \"object\", \"properties\": { \"identificativo_documento\": { \"type\": \"string\" }, \"valore\": { \"type\": \"string\" } }, \"required\": [\"identificativo_documento\", \"valore\"] } },\n            \"numero_impegno\": { \"type\": \"array\", \"items\": { \"type\": \"object\", \"properties\": { \"identificativo_documento\": { \"type\": \"string\" }, \"valore\": { \"type\": \"string\" } }, \"required\": [\"identificativo_documento\", \"valore\"] } },\n            \"protocollo_impegno\": { \"type\": \"array\", \"items\": { \"type\": \"object\", \"properties\": { \"identificativo_documento\": { \"type\": \"string\" }, \"valore\": { \"type\": \"string\" } }, \"required\": [\"identificativo_documento\", \"valore\"] } },\n            \"codice_intervento_sap\": { \"type\": \"array\", \"items\": { \"type\": \"object\", \"properties\": { \"identificativo_documento\": { \"type\": \"string\" }, \"valore\": { \"type\": \"string\" } }, \"required\": [\"identificativo_documento\", \"valore\"] } },\n            \"capitolo_spesa\": { \"type\": \"array\", \"items\": { \"type\": \"object\", \"properties\": { \"identificativo_documento\": { \"type\": \"string\" }, \"valore\": { \"type\": \"string\" } }, \"required\": [\"identificativo_documento\", \"valore\"] } },\n            \"conto_finanziario_v_livello\": { \"type\": \"array\", \"items\": { \"type\": \"object\", \"properties\": { \"identificativo_documento\": { \"type\": \"string\" }, \"valore\": { \"type\": \"string\" } }, \"required\": [\"identificativo_documento\", \"valore\"] } },\n            \"codice_contratto\": { \"type\": \"array\", \"items\": { \"type\": \"object\", \"properties\": { \"identificativo_documento\": { \"type\": \"string\" }, \"valore\": { \"type\": \"string\" } }, \"required\": [\"identificativo_documento\", \"valore\"] } },\n            \"numero_repertorio\": { \"type\": \"array\", \"items\": { \"type\": \"object\", \"properties\": { \"identificativo_documento\": { \"type\": \"string\" }, \"valore\": { \"type\": \"string\" } }, \"required\": [\"identificativo_documento\", \"valore\"] } },\n            \"cdr\": { \"type\": \"array\", \"items\": { \"type\": \"object\", \"properties\": { \"identificativo_documento\": { \"type\": \"string\" }, \"codice_cdr\": { \"type\": \"string\" }, \"settore\": { \"type\": \"string\" } }, \"required\": [\"identificativo_documento\", \"codice_cdr\", \"settore\"] } }\n          },\n          \"required\": [\"cig\", \"cup\", \"numero_impegno\", \"codice_intervento_sap\", \"capitolo_spesa\", \"conto_finanziario_v_livello\", \"cdr\"]\n        }\n      },\n      \"required\": [\"identificativi\"]\n    }\n  },\n  \"required\": [\"output\"]\n}\n```\n\n# DATI DOCUMENTI:\n\n## Manifesto immagini\n{{ $json.manifesto_immagini }}\n\nNota bene: Le immagini sono allegate a questo prompt esattamente nell'ordine descritto qui sopra.\n\n## TESTO\n{{ JSON.stringify($json.documenti) }}\n\n\n",
-        "options": {}
+        "text": "=# MISSIONE\nAnalizza il pacchetto di file forniti (testi estratti dai documenti di liquidazione). Devi mappare l'intero ecosistema della pratica senza formulare giudizi, agendo con estrema pignoleria.\n\nIl tuo unico scopo è scovare codici. Se un codice appare in {{ $json.output.lista_identificativi.length }} documenti, devi creare {{ $json.output.lista_identificativi.length }} relazioni. Non fermarti ai primi risultati.\n\n**PROTOCOLLO IMPERATIVO:** Controlla maniacalmente le tabelle tecniche delle SLIQ e dei SAL e degli altri documenti coinvolti. \n\n## File attesi\n\nDevi aspettarti i seguenti documenti:\n- Atto di liquidazione\n- diversi Atti di impegno\n- Quadro Economico\n- Fattura o fatture\n- diverse Proposte di liquidazione del RUP\n- diversi SAL\n- diversi Certificati di pagamento\n- diverse SLIQ\n- Atto di nomina\n- Atti di delega (opzionale)\n- Atto di giroconto (opzionale)\n- Atto di variazione di V livello (opzionale)\n\nAlcuni di questi documenti possono comparire nello stesso file (es le SLIQ allegate all'atto di Liquidazione). Tu DEVI trattarli come documenti diversi, quindi cercando i codici che man mano sono richiesti nei singoli documenti.\n\n## Mappatura documentale\n\nEstrai i documenti e le informazioni come specificato di seguito. Per l'identificativo dei documenti usa esclusivamente la lista fornita: [{{ $json.output.lista_identificativi }}].\n\n## CODICI: PROTOCOLLO OPERATIVO\nSegui scrupolosamente il protocollo operativo per l'estrazione dei seguenti codici. Per semplicità riporto quali sono i documenti da analizzare, ma vai in fondo ai documenti e alle tabelle in essi contenuti\n\n### Numero di Impegno\n\nCerca il numero dell'impegno nei seguenti documenti:\n- Atto di liquidazione\n- Atti di impegno (tutti)\n- tutte le SLIQ e relativi mandati\n\nRiporta tutte le istanze\n\n**NB:** Alcuni di questi documenti possono comparire nello stesso file (es le SLIQ allegate all'atto di Liquidazione). Tu DEVI trattarli come documenti diversi, quindi cercando i codici che man mano sono richiesti nei singoli documenti.\n\n\n### Capitolo\n\nCerca il codice del capitolo nei seguenti documenti:\n- Atto di liquidazione\n- Atti di impegno (tutti)\n- tutte le SLIQ e relativi mandati\n\nE' un codice che inizia per 'R' o 'U'\n\nRiporta tutte le istanze\n\n**NB:** Alcuni di questi documenti possono comparire nello stesso file (es le SLIQ allegate all'atto di Liquidazione). Tu DEVI trattarli come documenti diversi, quindi cercando i codici che man mano sono richiesti nei singoli documenti.\n\n### CDR (Centro di Responsabilità)\n\nCerca il numero del CdR nei seguenti documenti:\n- Atto di liquidazione\n- Atti di impegno (tutti)\n- tutte le SLIQ e relativi mandati\n- Atti di giroconto. La presenza di questo file è opzionale. Se c'è, analizzalo in fondo\n\nRiporta tutte le istanze\n\n\n**NB:** Alcuni di questi documenti possono comparire nello stesso file (es le SLIQ allegate all'atto di Liquidazione). Tu DEVI trattarli come documenti diversi, quindi cercando i codici che man mano sono richiesti nei singoli documenti.\n\n\n### Conto finanziario V livello\n\nCerca il codice del Conto V livello nei seguenti documenti:\n- Atto di liquidazione\n- Atti di impegno (tutti)\n- tutte le SLIQ e relativi mandati\n- Atto di variazione di V livello. La presenza di questo file è opzionale. Se c'è, analizzalo in fondo\n\nRiporta tutte le istanze\n\n\n**NB:** Alcuni di questi documenti possono comparire nello stesso file (es le SLIQ allegate all'atto di Liquidazione). Tu DEVI trattarli come documenti diversi, quindi cercando i codici che man mano sono richiesti nei singoli documenti.\n\n\n### Codice intervento\n\nCerca il Codice Intervento nei seguenti documenti:\n- Atto di liquidazione\n- Atti di impegno (tutti)\n- tutte le SLIQ e relativi mandati\n- Tutte le fatture\n- Tutte le Proposte di liquidazione del RUP\n- Tutti i SAL\n- Tutti i Certificati di Pagamento\n\nNei documenti protresti trovare il codice con diversi nomi (es. Codice Intervento, Cod. Int., C.I., CI)\n\nRiporta tutte le istanze\n\n**NB:** Alcuni di questi documenti possono comparire nello stesso file (es le SLIQ allegate all'atto di Liquidazione). Tu DEVI trattarli come documenti diversi, quindi cercando i codici che man mano sono richiesti nei singoli documenti.\n\n### Codice CUP\n\nCerca il CUP (Codice Unico di Progetto) nei seguenti documenti:\n- Atto di liquidazione\n- Atti di impegno (tutti)\n- tutte le SLIQ e relativi mandati\n- Tutte le fatture\n- Tutte le Proposte di liquidazione del RUP (presenza del codice opzionale)\n- Tutti i SAL (presenza del codice opzionale)\n- Tutti i Certificati di Pagamento (presenza del codice opzionale)\n\nRiporta tutte le istanze\nIn alcuni file la presenza del codice è opzionale, ma tu cercala lo stesso.\n\n**NB:** Alcuni di questi documenti possono comparire nello stesso file (es le SLIQ allegate all'atto di Liquidazione). Tu DEVI trattarli come documenti diversi, quindi cercando i codici che man mano sono richiesti nei singoli documenti.\n\n### Codice CIG\n\nCerca il CIG (Codice Identificativo Gara) nei seguenti documenti:\n- Atto di liquidazione\n- Atti di impegno (tutti)\n- tutte le SLIQ e relativi mandati\n- Tutte le fatture\n- Tutte le Proposte di liquidazione del RUP (presenza del codice opzionale)\n\nRiporta tutte le istanze\nIn alcuni file la presenza del codice è opzionale, ma tu cercala lo stesso.\n\n**NB:** Alcuni di questi documenti possono comparire nello stesso file (es le SLIQ allegate all'atto di Liquidazione). Tu DEVI trattarli come documenti diversi, quindi cercando i codici che man mano sono richiesti nei singoli documenti.\n\n### Protocollo Impegno\n\nCerca il protocollo impegno nei seguenti documenti:\n- tutti gli Atto di impegno\n- tutte le Fatture\n- tutte le SLIQ e relativi Mandati\n\nRiporta tutte le istanze\n\n**NB:** Alcuni di questi documenti possono comparire nello stesso file (es le SLIQ allegate all'atto di Liquidazione). Tu DEVI trattarli come documenti diversi, quindi cercando i codici che man mano sono richiesti nei singoli documenti.\n\n### Codice contratto o Numero di repertorio\n\nCerca il Codice contratto e il Numero di repertorio nei seguenti documenti:\n- Atto di liquidazione\n- tutte le Proposte di liquidazione del RUP\n- tutti i SAL\n- tutti i Certificati di pagamento\n\nL'informazione deve essere citata in tutti i documenti elencati, ma potrebbe comparire a volte come Codice Contratto altre volte come Numero di Repertorio.\nRiporta tutte le istanze riscontrate.\n\n# OUTPUT\n\nPer il tuo output considera esclusivamente il seguente schema JSON. Restituisci quello senza altro testo.\nRispondi esclusivamente con il codice JSON. Non aggiungere testo prima o dopo.\n\n```\njson\n{\n  \"type\": \"object\",\n  \"properties\": {\n    \"output\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"identificativi\": {\n          \"type\": \"object\",\n          \"properties\": {\n            \"cig\": { \"type\": \"array\", \"items\": { \"type\": \"object\", \"properties\": { \"identificativo_documento\": { \"type\": \"string\" }, \"valore\": { \"type\": \"string\" } }, \"required\": [\"identificativo_documento\", \"valore\"] } },\n            \"cup\": { \"type\": \"array\", \"items\": { \"type\": \"object\", \"properties\": { \"identificativo_documento\": { \"type\": \"string\" }, \"valore\": { \"type\": \"string\" } }, \"required\": [\"identificativo_documento\", \"valore\"] } },\n            \"numero_impegno\": { \"type\": \"array\", \"items\": { \"type\": \"object\", \"properties\": { \"identificativo_documento\": { \"type\": \"string\" }, \"valore\": { \"type\": \"string\" } }, \"required\": [\"identificativo_documento\", \"valore\"] } },\n            \"protocollo_impegno\": { \"type\": \"array\", \"items\": { \"type\": \"object\", \"properties\": { \"identificativo_documento\": { \"type\": \"string\" }, \"valore\": { \"type\": \"string\" } }, \"required\": [\"identificativo_documento\", \"valore\"] } },\n            \"codice_intervento_sap\": { \"type\": \"array\", \"items\": { \"type\": \"object\", \"properties\": { \"identificativo_documento\": { \"type\": \"string\" }, \"valore\": { \"type\": \"string\" } }, \"required\": [\"identificativo_documento\", \"valore\"] } },\n            \"capitolo_spesa\": { \"type\": \"array\", \"items\": { \"type\": \"object\", \"properties\": { \"identificativo_documento\": { \"type\": \"string\" }, \"valore\": { \"type\": \"string\" } }, \"required\": [\"identificativo_documento\", \"valore\"] } },\n            \"conto_finanziario_v_livello\": { \"type\": \"array\", \"items\": { \"type\": \"object\", \"properties\": { \"identificativo_documento\": { \"type\": \"string\" }, \"valore\": { \"type\": \"string\" } }, \"required\": [\"identificativo_documento\", \"valore\"] } },\n            \"codice_contratto\": { \"type\": \"array\", \"items\": { \"type\": \"object\", \"properties\": { \"identificativo_documento\": { \"type\": \"string\" }, \"valore\": { \"type\": \"string\" } }, \"required\": [\"identificativo_documento\", \"valore\"] } },\n            \"numero_repertorio\": { \"type\": \"array\", \"items\": { \"type\": \"object\", \"properties\": { \"identificativo_documento\": { \"type\": \"string\" }, \"valore\": { \"type\": \"string\" } }, \"required\": [\"identificativo_documento\", \"valore\"] } },\n            \"cdr\": { \"type\": \"array\", \"items\": { \"type\": \"object\", \"properties\": { \"identificativo_documento\": { \"type\": \"string\" }, \"codice_cdr\": { \"type\": \"string\" }, \"settore\": { \"type\": \"string\" } }, \"required\": [\"identificativo_documento\", \"codice_cdr\", \"settore\"] } }\n          },\n          \"required\": [\"cig\", \"cup\", \"numero_impegno\", \"codice_intervento_sap\", \"capitolo_spesa\", \"conto_finanziario_v_livello\", \"cdr\"]\n        }\n      },\n      \"required\": [\"identificativi\"]\n    }\n  },\n  \"required\": [\"output\"]\n}\n```\n\n\n\n",
+        "options": {
+          "systemMessage": "=# DATI DOCUMENTI:\n\n## Manifesto immagini\n{{ $json.manifesto_immagini }}\n\nNota bene: Le immagini sono allegate a questo prompt esattamente nell'ordine descritto qui sopra.\n\n## TESTO\n{{ JSON.stringify($json.documenti) }}\n\n# ROLE\n\nSei un Agente Specialista in Estrazione Dati per la Contabilità Pubblica (Comune di Bologna)."
+        }
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 3.1,
       "position": [
-        112,
-        576
+        -1392,
+        288
       ],
-      "id": "8a14b2c0-110e-4fd0-a7c0-9c5f34548375",
+      "id": "141e8ab4-6483-434e-b579-d783763c4563",
       "name": "Estrattore Codici"
     },
     {
@@ -408,10 +378,10 @@
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.2,
       "position": [
-        896,
-        640
+        -608,
+        352
       ],
-      "id": "a87e5382-5f11-43ff-823f-de1189b364c8",
+      "id": "55cab7a2-bbc7-43c9-8d1a-3635aabf8488",
       "name": "Merge1"
     },
     {
@@ -421,10 +391,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        512,
-        384
+        -992,
+        96
       ],
-      "id": "9091e5fb-14e8-4e20-89ff-2eccb5320ca2",
+      "id": "487fb358-c76b-4848-a528-236aa0c96e38",
       "name": "Code in JavaScript2"
     },
     {
@@ -434,10 +404,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        512,
-        576
+        -992,
+        288
       ],
-      "id": "445683eb-ca8b-4761-ae17-1c247522cb02",
+      "id": "8356332b-fee0-4889-bd99-687103abbf1a",
       "name": "Code in JavaScript3"
     },
     {
@@ -447,10 +417,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        512,
-        768
+        -992,
+        480
       ],
-      "id": "aa82d5b8-9038-43d9-8bd3-4249a0221058",
+      "id": "c87a8e99-955c-45df-96ee-b56aa759e11a",
       "name": "Code in JavaScript4"
     },
     {
@@ -460,10 +430,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1120,
-        672
+        -384,
+        384
       ],
-      "id": "27375b17-5d96-4fee-a613-5d3adf8b5811",
+      "id": "7aa4be9d-b083-4292-a851-e296666db8a0",
       "name": "Code in JavaScript5"
     },
     {
@@ -473,10 +443,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        512,
-        960
+        -992,
+        688
       ],
-      "id": "9ecf9791-bf65-450c-a8b7-69a2c02f43bc",
+      "id": "6b26d00f-87e8-42e1-83ff-c97c07ab9634",
       "name": "Code in JavaScript6"
     },
     {
@@ -487,10 +457,10 @@
       "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
       "typeVersion": 1.3,
       "position": [
-        -704,
-        1056
+        -2208,
+        768
       ],
-      "id": "b517edbc-3fa1-4d25-b04e-1d3b7aa1814d",
+      "id": "9b05c686-81f6-4580-962e-9850dfbf26e9",
       "name": "Structured Output Parser2"
     },
     {
@@ -502,10 +472,10 @@
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.2,
       "position": [
-        -560,
-        672
+        -2064,
+        384
       ],
-      "id": "88187b27-c677-4a88-a8dd-5030e9b42097",
+      "id": "c59f6c43-668d-4113-b9a9-f56fa2f9510f",
       "name": "Merge2"
     },
     {
@@ -530,10 +500,10 @@
       "type": "n8n-nodes-base.executionData",
       "typeVersion": 1.1,
       "position": [
-        -864,
-        304
+        -2368,
+        16
       ],
-      "id": "bdad2faf-30ac-48f4-a1eb-56d47714f706",
+      "id": "368211cf-6122-4f2a-93af-63e5526df77b",
       "name": "Execution Data"
     },
     {
@@ -571,92 +541,209 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -1088,
-        304
+        -2592,
+        16
       ],
-      "id": "cdf1e453-d442-4467-81e8-3b33183cba64",
+      "id": "4d588011-2c4e-4cd4-848f-efaeff4ab81a",
       "name": "Edit Fields"
     },
     {
       "parameters": {
         "promptType": "define",
-        "text": "=Role: sei un esperto di Ragioneria del Comune di Bologna specializzato sugli atti di lavori pubblici.\n\n# Mission\nIl tuo unico compito è mappare le persone e le imprese. Cerca le nomine del RUP, il Direttore Lavori e chi ha firmato gli atti.\n\n## File attesi\nDevi aspettarti i seguenti documenti, non per forza divisi in file diversi:\n- Atto di liquidazione\n- diversi Atti di impegno\n- Atto di nomina\n- Atti di delega (opzionale)\n\n## Mappatura documentale\n\nEstrai i documenti e le informazioni come specificato di seguito. Per l'identificativo dei documenti usa esclusivamente la lista fornita: [{{ $json.output.lista_identificativi }}].\n\n### Atto di liquidazione\nEstrai le informazioni dall'atto di liquidazione. Riporta l'oggetto del documento, l'intestazione di comparto, la data del documento, il codice CDR (Codice di Responsabilità) e l'importo totale.\n\n### Atti di impegno\n\nDagli atti di impegno estrai l'oggetto, la data e una descrizione del documento (massimo 500 parole).\nL'atto di impegno potrebbe far riferimento a diversi 'Capitoli'. Vanno TASSATIVAMENTE estratti tutti.\nPer ogni capitolo riscontrato, estrai MINUZIOSAMENTE TUTTI i numeri di impegno associati a quel capitolo, con relativa descrizione e codice di Conto Finanziario di V Livello.\n\n## Firmatari\nPer ogni documento estrai il Nome del firmatario e il suo Ruolo (es. Dirigente, Capodipartimento). Se il nome manca, riporta solo il ruolo.\n\n## Imprese\n\nDelle aziende estrai l'Impresa Affidataria e tutte le imprese che sono coinvolte nei documenti. Esplicita se formano una RTI (quindi riporta chi è la mandataria e le mandanti) e chi sono le aziende subappaltatrici.\n\n## Deleghe\n\nCerca attentamente deleghe esplicite nei documenti che incontri. Riporta il documento di partenza (quindi dove viene notificata la delega), chi viene delegato e la motivazione. Se non riscontri nessuna di queste informazioni nei documenti, allora restituisci un array vuoto.\n\n## TOOL:\npuoi contare sui seguenti tool:\n- `tool_cdr_lookup`, specificando il `cdr_code` e la data di riferimento `ref_date` nel formato 'YYYY-MM-DD', per avere informazioni sui CDR che hai incontrato. Per la data usa la data del documento che stai analizzato.\n- `tool_rup_delegation`, specificando il paramentro `operation_code` per avere informazioni sul RUP nominato su un codice intervento.\n\n## REGOLE RIGOROSE:\n- Se un dato manca, usa null.\n- NON inventare nulla.\n\n# OUTPUT\n\nUsa il seguente JSON schema per il tuo output. Restituisci SOLO un json in risposta senza ulteriore testo.\n\n```\njson\n{\n  \"type\": \"object\",\n  \"properties\": {\n    \"output\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"mappatura_documentale\": {\n          \"type\": \"object\",\n          \"description\": \"Contiene tutti i documenti estratti, raggruppati per tipologia funzionale.\",\n          \"properties\": {\n            \"atto_di_liquidazione\": {\n              \"type\": \"object\",\n              \"properties\": {\n                \"identificativo_documento\": { \"type\": \"string\" },\n                \"oggetto\": { \"type\": \"string\", \"description\": \"Descrizione testuale per controllo semantico\" },\n                \"data\": { \"type\": [\"string\", \"null\"] },\n                \"cdr_codice\": { \"type\": [\"string\", \"null\"] },\n                \"importo_totale\": { \"type\": [\"number\", \"null\"] },\n                \"intestazione_comparto\": { \"type\": \"string\" }\n              },\n              \"required\": [\"identificativo_documento\", \"importo_totale\", \"intestazione_comparto\"]\n            },\n            \"atti_amministrativi\": {\n              \"type\": \"object\",\n              \"properties\": {\n                \"impegni\": {\n                  \"type\": \"array\",\n                  \"description\": \"Include determina impegno originaria e atti relativi a riaccertamenti\",\n                  \"items\": {\n                    \"type\": \"object\",\n                    \"properties\": {\n                      \"identificativo_documento\": { \"type\": \"string\" },\n                      \"data\": { \"type\": [\"string\", \"null\"] },\n                      \"descrizione\": { \"type\": \"string\" },\n                      \"impegni\": {\n                        \"type\": \"array\",\n                        \"items\": {\n                          \"type\": \"object\",\n                          \"properties\": {                        \n                            \"codice_capitolo\": { \"type\": \"string\" },\n                            \"numero_impegno\": { \"type\": \"string\" },\n                            \"codice_finanziario_v_livello\": { \"type\": [\"string\", \"null\"] },\n                            \"descrizione\": { \"type\": [\"string\", \"null\"] }\n                          }\n                        }\n                      }\n                    }\n                  }\n                },\n                \"atto_nomina_rup\": {\n                  \"type\": \"object\",\n                  \"properties\": {\n                    \"identificativo_documento\": { \"type\": \"string\" },\n                    \"descrizione\": { \"type\": \"string\" },\n                    \"rup_nominato\": { \"type\": \"string\" }\n                  }\n                },\n                \"deleghe\": {\n                  \"type\": \"array\",\n                  \"items\": {\n                    \"type\": \"object\",\n                    \"properties\": {\n                      \"identificativo_documento\": { \"type\": \"string\" },\n                      \"motivo_delega\": { \"type\": \"string\" },\n                      \"delegato\": { \"type\": \"string\" }\n                    }\n                  }\n                }\n              }\n            }\n          },\n          \"required\": [\"atto_di_liquidazione\", \"atti_amministrativi\"]\n        },\n        \"anagrafica_progetto\": {\n          \"type\": \"object\",\n          \"properties\": {\n            \"rup_in_carica\": { \"type\": [\"string\", \"null\"] },\n            \"direttore_lavori\": { \"type\": [\"string\", \"null\"] },\n            \"impresa_affidataria\": {\n              \"type\": \"object\",\n              \"properties\": {\n                \"denominazione\": { \"type\": \"string\" },\n                \"p_iva\": { \"type\": [\"string\", \"null\"] },\n                \"iban\": { \"type\": [\"string\", \"null\"] },\n                \"is_rti\": { \"type\": \"boolean\" },\n                \"mandataria\": { \"type\": [\"string\", \"null\"] },\n                \"mandanti\": { \"type\": \"array\", \"items\": { \"type\": \"string\" } },\n                \"subappaltatori\": { \"type\": \"array\", \"items\": { \"type\": \"string\" } }\n              }\n            }\n          }\n        },\n        \"registro_firme\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"object\",\n            \"properties\": {\n              \"identificativo_documento\": { \"type\": \"string\" },\n              \"firmatario_nominativo\": { \"type\": [\"string\", \"null\"] },\n              \"firmatario_ruolo\": { \"type\": [\"string\", \"null\"] }\n            },\n            \"required\": [\"identificativo_documento\"]\n          }\n        }\n      },\n      \"required\": [\"mappatura_documentale\", \"anagrafica_progetto\", \"registro_firme\"]\n    }\n  }\n}\n```\n\n# DATI DOCUMENTI:\n\n## Manifesto immagini\n{{ $json.manifesto_immagini }}\n\nNota bene: Le immagini sono allegate a questo prompt esattamente nell'ordine descritto qui sopra.\n\n## TESTO\n{{ JSON.stringify($json.documenti) }}",
+        "text": "=# Mission\nIl tuo unico compito è mappare le persone e le imprese. Cerca le nomine del RUP, il Direttore Lavori e chi ha firmato gli atti.\n\n## File attesi\nDevi aspettarti i seguenti documenti, non per forza divisi in file diversi:\n- Atto di liquidazione\n- diversi Atti di impegno\n- Atto di nomina\n- Atti di delega (opzionale)\n\n## Mappatura documentale\n\nEstrai i documenti e le informazioni come specificato di seguito. Per l'identificativo dei documenti usa esclusivamente la lista fornita: [{{ $json.output.lista_identificativi }}].\n\n### Atto di liquidazione\nEstrai le informazioni dall'atto di liquidazione. Riporta l'oggetto del documento, l'intestazione di comparto, la data del documento, il codice CDR (Codice di Responsabilità) e l'importo totale.\n\n### Atti di impegno\n\nDagli atti di impegno estrai l'oggetto, la data e una descrizione del documento (massimo 500 parole).\nL'atto di impegno potrebbe far riferimento a diversi 'Capitoli'. Vanno TASSATIVAMENTE estratti tutti.\nPer ogni capitolo riscontrato, estrai MINUZIOSAMENTE TUTTI i numeri di impegno associati a quel capitolo, con relativa descrizione e codice di Conto Finanziario di V Livello.\n\n## Firmatari\nPer ogni documento estrai il Nome del firmatario e il suo Ruolo (es. Dirigente, Capodipartimento). Se il nome manca, riporta solo il ruolo.\n\n## Imprese\n\nDelle aziende estrai l'Impresa Affidataria e tutte le imprese che sono coinvolte nei documenti. Esplicita se formano una RTI (quindi riporta chi è la mandataria e le mandanti) e chi sono le aziende subappaltatrici.\n\n## Deleghe\n\nCerca attentamente deleghe esplicite nei documenti che incontri. Riporta il documento di partenza (quindi dove viene notificata la delega), chi viene delegato e la motivazione. Se non riscontri nessuna di queste informazioni nei documenti, allora restituisci un array vuoto.\n\n## DURC\n\nEstrai i dati relativi ai DURC. In particolare concentrati su:\n- data della richiesta\n- scadenza della validità\n- denominazione/ragione sociale\n- Codice Fiscale\n- Enti verso cui il soggetto risulta regolare e relativo flag di validità\n\nNon tutti i DURC sono obbligatori. Non interpretare, ma riporta solo le informazioni che ritrovi nel formato specificato in fondo\n\n## TOOL:\npuoi contare sui seguenti tool:\n- `tool_cdr_lookup`, specificando il `cdr_code` e la data di riferimento `ref_date` nel formato 'YYYY-MM-DD', per avere informazioni sui CDR che hai incontrato. Per la data usa la data del documento che stai analizzato.\n- `tool_rup_delegation`, specificando il paramentro `operation_code` per avere informazioni sul RUP nominato su un codice intervento.\n\n## REGOLE RIGOROSE:\n- Se un dato manca, usa null.\n- NON inventare nulla.\n\n# OUTPUT\n\nUsa il seguente JSON schema per il tuo output. Restituisci SOLO un json in risposta senza ulteriore testo.\n\n```\njson\n{\n  \"type\": \"object\",\n  \"properties\": {\n    \"output\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"mappatura_documentale\": {\n          \"type\": \"object\",\n          \"description\": \"Contiene tutti i documenti estratti, raggruppati per tipologia funzionale.\",\n          \"properties\": {\n            \"atto_di_liquidazione\": {\n              \"type\": \"object\",\n              \"properties\": {\n                \"identificativo_documento\": { \"type\": \"string\" },\n                \"oggetto\": { \"type\": \"string\", \"description\": \"Descrizione testuale per controllo semantico\" },\n                \"data\": { \"type\": [\"string\", \"null\"] },\n                \"cdr_codice\": { \"type\": [\"string\", \"null\"] },\n                \"importo_totale\": { \"type\": [\"number\", \"null\"] },\n                \"intestazione_comparto\": { \"type\": \"string\" }\n              },\n              \"required\": [\"identificativo_documento\", \"importo_totale\", \"intestazione_comparto\"]\n            },\n            \"atti_amministrativi\": {\n              \"type\": \"object\",\n              \"properties\": {\n                \"impegni\": {\n                  \"type\": \"array\",\n                  \"description\": \"Include determina impegno originaria e atti relativi a riaccertamenti\",\n                  \"items\": {\n                    \"type\": \"object\",\n                    \"properties\": {\n                      \"identificativo_documento\": { \"type\": \"string\" },\n                      \"data\": { \"type\": [\"string\", \"null\"] },\n                      \"descrizione\": { \"type\": \"string\" },\n                      \"impegni\": {\n                        \"type\": \"array\",\n                        \"items\": {\n                          \"type\": \"object\",\n                          \"properties\": {                        \n                            \"codice_capitolo\": { \"type\": \"string\" },\n                            \"numero_impegno\": { \"type\": \"string\" },\n                            \"codice_finanziario_v_livello\": { \"type\": [\"string\", \"null\"] },\n                            \"descrizione\": { \"type\": [\"string\", \"null\"] }\n                          }\n                        }\n                      }\n                    }\n                  }\n                },\n                \"atto_nomina_rup\": {\n                  \"type\": \"object\",\n                  \"properties\": {\n                    \"identificativo_documento\": { \"type\": \"string\" },\n                    \"descrizione\": { \"type\": \"string\" },\n                    \"rup_nominato\": { \"type\": \"string\" }\n                  }\n                },\n                \"deleghe\": {\n                  \"type\": \"array\",\n                  \"items\": {\n                    \"type\": \"object\",\n                    \"properties\": {\n                      \"identificativo_documento\": { \"type\": \"string\" },\n                      \"motivo_delega\": { \"type\": \"string\" },\n                      \"delegato\": { \"type\": \"string\" }\n                    }\n                  }\n                },\n                \"durc\": {\n                  \"type\": \"array\",\n                  \"items\": {\n                    \"type\": \"object\",\n                    \"properties\": {\n                      \"data_richiesta\": { \"type\": \"string\" },\n                      \"scadenza_validita\": { \"type\": \"string\" },\n                      \"denominazione_ragione_sociale\": { \"type\": \"string\" },\n                      \"codice_fiscale\": { \"type\": \"string\" },\n                      \"is_regolare\": { \"type\": \"boolean\" },\n                      \"regolarita_verso_enti\": { \"type\": \"string\" }\n                    }\n                  }\n                }\n              }\n            }\n          },\n          \"required\": [\"atto_di_liquidazione\", \"atti_amministrativi\"]\n        },\n        \"anagrafica_progetto\": {\n          \"type\": \"object\",\n          \"properties\": {\n            \"rup_in_carica\": { \"type\": [\"string\", \"null\"] },\n            \"direttore_lavori\": { \"type\": [\"string\", \"null\"] },\n            \"impresa_affidataria\": {\n              \"type\": \"object\",\n              \"properties\": {\n                \"denominazione\": { \"type\": \"string\" },\n                \"p_iva\": { \"type\": [\"string\", \"null\"] },\n                \"iban\": { \"type\": [\"string\", \"null\"] },\n                \"is_rti\": { \"type\": \"boolean\" },\n                \"mandataria\": { \"type\": [\"string\", \"null\"] },\n                \"mandanti\": { \"type\": \"array\", \"items\": { \"type\": \"string\" } },\n                \"subappaltatori\": { \"type\": \"array\", \"items\": { \"type\": \"string\" } }\n              }\n            }\n          }\n        },\n        \"registro_firme\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"object\",\n            \"properties\": {\n              \"identificativo_documento\": { \"type\": \"string\" },\n              \"firmatario_nominativo\": { \"type\": [\"string\", \"null\"] },\n              \"firmatario_ruolo\": { \"type\": [\"string\", \"null\"] }\n            },\n            \"required\": [\"identificativo_documento\"]\n          }\n        }\n      },\n      \"required\": [\"mappatura_documentale\", \"anagrafica_progetto\", \"registro_firme\"]\n    }\n  }\n}\n```\n",
         "options": {
+          "systemMessage": "=# DATI DOCUMENTI:\n\n## Manifesto immagini\n{{ $json.manifesto_immagini }}\n\nNota bene: Le immagini sono allegate a questo prompt esattamente nell'ordine descritto qui sopra.\n\n## TESTO\n{{ JSON.stringify($json.documenti) }}\n\n# Role\n\nSei un esperto di Ragioneria del Comune di Bologna specializzato sugli atti di lavori pubblici.",
           "passthroughBinaryImages": true
         }
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 3.1,
       "position": [
-        112,
-        384
+        -1392,
+        96
       ],
-      "id": "a3f683b1-4c04-416b-b7aa-d8533508fe22",
+      "id": "d307ed37-69b0-4f07-886c-b06f8a506a1e",
       "name": "Estrattore Soggetti e Poteri"
     },
     {
       "parameters": {
         "promptType": "define",
-        "text": "=Role: Sei un revisore contabile del Comune di Bologna specializzato sugli atti di lavori pubblici.\n\n# Mission\nIl tuo unico compito è di leggere i documenti e le tabelle allegate, estraendo in modo maniacale gli importi.\n\n## File attesi\nDevi concentrarti sui seguenti documenti, non per forza divisi in file diversi:\n- diverse SLIQ, ognuna potrebbe avere diversi Mandati\n- diverse Fatture\n- Diversi SAL\n- Diversi certificati di pagamento\n- diversi quadri economici\n\n## Mappatura documentale\n\nEstrai i documenti e le informazioni come specificato di seguito. Per l'identificativo dei documenti usa esclusivamente la lista fornita: [{{ $json.output.lista_identificativi }}].\n\n## PROTOCOLLO OPERATIVO\n\nSegui esattamente il seguente protocollo operativo:\n\n### SLIQ\n\nDalle SLIQ estrai:\n- il Numero della SLIQ, inteso come numero liquidazione, unico per ogni SLIQ\n- la determina di liquidazione\n- la data\n- il Numero di Impegno di ogni mandato\n- il Protocollo Impegno di ogni mandato\n- il Capitolo di ogni mandato\n- la lista di fatture citate per ogni mandato e relativo beneficiario\n- l'IBAN di ogni mandato\n- il conto finanziario di V livello in ogni mandato\n- gli importi: \n  - l'importo totale di liquidazione\n  - il totale di ogni mandato / impegno\n  - il totale di ogni fornitore\n  - il totale delle somme detratte (in caso di split payment)\n\nRelativamente al Capitolo, indica se è un Riaccertamento oppure no. Nel primo caso il Capitolo inizia per 'R', nel secondo per 'U'.\n\nSii preciso al centesimo e pignolo su ogni dettaglio.\n\n### Fatture\n\nDalle fatture estrai:\n- Il numero della fattura\n- la data\n- la descrizione della prestazione\n- la lista di impegni citati\n- la denominazione del fornitore\n- la partita iva\n- l'IBAN\n- l'importo imponibile\n- l'importo dell'IVA\n- l'importo lordo\n- il regime fiscale per l'IVA (Split Payment, Reverse Charge, ecc)\n\nSii preciso al centesimo e pignolo su ogni dettaglio.\n\n### SAL\n\nDi ogni SAL concentrati solo su due parti:\n- la parte iniziale, in cui viene riportato il quadro economico (questa parte è opzionale)\n- il riepilogo finale che riguarda il riassunto dei lavori eseguiti e relative detrazioni\n\nDa ogni SAL quindi estrai:\n- gli importi previsti dal quadro economico nella parte iniziale (lavori a misura, a corpo, in economia, il ribasso, oneri/costi della sicurezza e il totale del contratto)\n- gli stessi importi previsti nel SAL, nella parte in basso\nnel riepilogo finale del documento potrebbe esserci la somma del residuo. Se c'è, estraila.\n\nSe presente, riporta anche il contratto o il repertorio.\n\nNel riportare i dati in output sii preciso al centesimo e distingui attentamente tra gli importi indicati come riepilogo iniziale del quadro economico (se presente) e quelli specifici del SAL.\n\nNon inventare cifre. Se non è presente una cifra, riporta 'null' nel tuo output in corrispondenza di quella chiave.\n\n### Certificati di Pagamento\n\nIl certificato va in coppia con il suo SAL. Di solito riporta le stesse informazioni, ma potrebbe omettere le voci relative al quadro economico.\n\nDi ogni certificato di pagamento estrai:\n- il totale delle detrazioni (se presenti)\n- importo residuo (se presente)\n- costi o oneri della sicurezza (se presenti)\n- importo netto (da pagare)\n- l'importo dell'IVA\n- importo netto espresso in lettere\n- se citato riporta inoltre: \n  - il contratto o il repertorio\n  - il totale dell'importo dei lavori\n\nSii preciso al centesimo. Non inventare cifre. Se non è presente una cifra, riporta 'null' nel tuo output in corrispondenza di quella chiave.\n\nL'importo in lettere potrebbe contenere errori. Riporta ESATTAMENTE quello che ritrovi SENZA alcuna correzione o interpretazione.\n\n### Quadro economico\n\n\n\n## REGOLE RIGOROSE:\n- Se un dato manca, usa null.\n- NON inventare nulla.\n- Sii preciso al centesimo\n\n# OUTPUT\n\nUsa il seguente JSON schema per il tuo output. Restituisci SOLO un json in risposta senza ulteriore testo.\n\n```\njson\n{\n  \"type\": \"object\",\n  \"properties\": {\n    \"output\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"mappatura_documentale\": {\n          \"type\": \"object\",\n          \"description\": \"Contiene tutti i documenti estratti, raggruppati per tipologia funzionale.\",\n          \"properties\": {\n            \"documenti_contabili\": {\n              \"type\": \"object\",\n              \"properties\": {\n                \"sliq\": {\n                  \"type\": \"array\",\n                  \"items\": {\n                    \"type\": \"object\",\n                    \"properties\": {\n                      \"identificativo_documento\": { \"type\": \"string\" },\n                      \"numero_sliq\": { \"type\": \"string\" },\n                      \"determina\": { \"type\": \"string\" },\n                      \"data\": { \"type\": \"string\" },\n                      \"importo_totale_liquidazione\": { \"type\": [\"number\", \"null\"] },\n                      \"totale_detrazioni\": { \"type\": [\"number\", \"null\"] },\n                      \"mandati\": {\n                        \"type\": \"array\",\n                        \"items\": {\n                          \"type\": \"object\",\n                          \"properties\": {\n                            \"capitolo\": { \"type\": [\"string\", \"null\"], \"description\": \"Essenziale per verifica 'U' o 'R' riaccertamento dei residui\" },\n                            \"is_riaccertamento\": { \"type\": \"boolean\", \"description\": \"true se e solo se il capitolo inizia per 'R'\" },\n                            \"protocollo_impegno\": { \"type\": [\"string\", \"null\"], \"description\": \"Per verifica DGPRO\" },\n                            \"fatture_citate\": { \"type\": \"array\", \"items\": { \"type\": \"string\" } },\n                            \"importo_totale_fornitore\": { \"type\": [\"number\", \"null\"] },\n                            \"importo_totale_impegno\": { \"type\": [\"number\", \"null\"] },\n                            \"beneficiario\": { \"type\": \"string\"},\n                            \"iban\": { \"type\": \"string\"}\n                          }\n                        }\n                      }\n                    }\n                  }\n                },\n                \"fatture\": {\n                  \"type\": \"array\",\n                  \"items\": {\n                    \"type\": \"object\",\n                    \"properties\": {\n                      \"identificativo_documento\": { \"type\": \"string\" },\n                      \"numero\": { \"type\": \"string\" },\n                      \"data\": { \"type\": [\"string\", \"null\"] },\n                      \"descrizione_prestazione\": { \"type\": [\"string\", \"null\"] },\n                      \"impegni_citati\": { \n                                \"type\": \"array\", \n                                \"items\": { \"type\": \"string\" },\n                                \"description\": \"Lista dei numeri di determine/impegni (es. DDPRO...) citati esplicitamente all'interno della fattura\"\n                            },\n                      \"denominazione_fornitore\": { \"type\": [\"string\", \"null\"] },\n                      \"partita_iva\": { \"type\": [\"string\", \"null\"] },\n                      \"iban\": { \"type\": [\"string\", \"null\"] },\n                      \"importo_imponibile\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_iva\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_lordo\": { \"type\": [\"number\", \"null\"] },\n                      \"regime_fiscale_iva\": { \"type\": \"string\" }\n                    },\n                    \"required\": [\"identificativo_documento\", \"numero\", \"importo_imponibile\" ]\n                  }\n                }\n              }\n            },\n            \"documenti_tecnici\": {\n              \"type\": \"object\",\n              \"properties\": {\n                \"sal\": {\n                  \"type\": \"array\",\n                  \"items\": {\n                    \"type\": \"object\",\n                    \"properties\": {\n                      \"identificativo_documento\": { \"type\": \"string\" },\n                      \"numero_sal\": { \"type\": \"string\" },\n                      \"data\": { \"type\": [\"string\", \"null\"] },\n                      \"n_contratto_o_repertorio\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_contratto\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_lavori_quadro_economico_sal\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_lavori_a_misura_quadro_economico_sal\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_lavori_a_corpo_quadro_economico_sal\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_lavori_in_economia_quadro_economico_sal\": { \"type\": [\"number\", \"null\"] },\n                      \"ribasso_quadro_economico_sal\": { \"type\": [\"number\", \"null\"] },\n                      \"oneri_sicurezza_quadro_economico_sal\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_lavori_sal\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_lavori_a_misura_sal\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_lavori_a_corpo_sal\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_lavori_in_economia_sal\": { \"type\": [\"number\", \"null\"] },\n                      \"oneri_sicurezza_sal\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_residuo_sal\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_totale_sal\": { \"type\": [\"number\"] }\n                    }\n                  }\n                },\n                \"certificati_pagamento\": {\n                  \"type\": \"array\",\n                  \"items\": {\n                    \"type\": \"object\",\n                    \"properties\": {\n                      \"identificativo_documento\": { \"type\": \"string\" },\n                      \"numero\": { \"type\": \"string\" },\n                      \"n_contratto_o_repertorio\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_contratto\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_lavori_quadro_economico_cert_pag\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_lavori_a_misura_quadro_economico_cert_pag\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_lavori_a_corpo_quadro_economico_cert_pag\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_lavori_in_economia_quadro_economico_cert_pag\": { \"type\": [\"number\", \"null\"] },\n                      \"ribasso_quadro_economico_cert_pag\": { \"type\": [\"number\", \"null\"] },\n                      \"oneri_sicurezza_quadro_economico_cert_pag\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_lavori_cert_pag\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_lavori_a_misura_cert_pag\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_lavori_a_corpo_cert_pag\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_lavori_in_economia_cert_pag\": { \"type\": [\"number\", \"null\"] },\n                      \"oneri_sicurezza_cert_pag\": { \"type\": [\"number\", \"null\"] },\n                      \"totale_detrazioni_cert_pag\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_lordo_cert_pag\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_netto_cert_pag\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_netto_in_lettere_cert_pag\": { \"type\": [\"string\", \"null\"] },\n                      \"importo_iva_cert_pag\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_residuo_cert_pag\": { \"type\": [\"number\", \"null\"] }\n                    }\n                  }\n                },\n                \"quadri_economici\": {\n                  \"type\": \"array\",\n                  \"items\": {\n                    \"type\": \"object\",\n                    \"properties\": {\n                      \"identificativo_documento\": { \"type\": \"string\" },\n                      \"data\": { \"type\": [\"string\", \"null\"] },\n                      \"importo_lavori\": { \"type\": [\"number\", \"null\"] },\n                      \"oneri_sicurezza\": { \"type\": [\"number\", \"null\"] }\n                    }\n                  }\n                }\n              }\n            }\n          },\n          \"required\": [\"documenti_contabili\", \"documenti_tecnici\"]\n        }\n      },\n      \"required\": [\"mappatura_documentale\"]\n    }\n  },\n  \"required\": [\"output\"]\n}\n```\n\n# DATI DOCUMENTI:\n\n## Manifesto immagini\n{{ $json.manifesto_immagini }}\n\nNota bene: Le immagini sono allegate a questo prompt esattamente nell'ordine descritto qui sopra.\n\n## TESTO\n{{ JSON.stringify($json.documenti) }}",
+        "text": "=# Mission\nIl tuo unico compito è di leggere i documenti e le tabelle allegate, estraendo in modo maniacale gli importi.\n\n## File attesi\nDevi concentrarti sui seguenti documenti, non per forza divisi in file diversi:\n- diverse SLIQ, ognuna potrebbe avere diversi Mandati\n- diverse Fatture\n- Diversi SAL\n- Diversi certificati di pagamento\n- diversi quadri economici\n\n## Mappatura documentale\n\nEstrai i documenti e le informazioni come specificato di seguito. Per l'identificativo dei documenti usa esclusivamente la lista fornita: [{{ $json.output.lista_identificativi }}].\n\n## PROTOCOLLO OPERATIVO\n\nSegui esattamente il seguente protocollo operativo:\n\n### SLIQ\n\nDalle SLIQ estrai:\n- il Numero della SLIQ, inteso come numero liquidazione, unico per ogni SLIQ\n- la determina di liquidazione\n- la data\n- il Numero di Impegno di ogni mandato\n- il Protocollo Impegno di ogni mandato\n- il Capitolo di ogni mandato\n- la lista di fatture citate per ogni mandato e relativo beneficiario\n- l'IBAN di ogni mandato\n- il conto finanziario di V livello in ogni mandato\n- gli importi: \n  - l'importo totale di liquidazione\n  - il totale di ogni mandato / impegno\n  - il totale di ogni fornitore\n  - il totale delle somme detratte (in caso di split payment)\n\nRelativamente al Capitolo, indica se è un Riaccertamento oppure no. Nel primo caso il Capitolo inizia per 'R', nel secondo per 'U'.\n\n*NB*: Attenzione ai casi di cessione del credito o factoring: l'intestatario della fattura (chi l'ha emessa) potrebbe non coincidere con il beneficiario del pagamento riportato nella SLIQ. Estrai esplicitamente entrambe le figure.\n\nSii preciso al centesimo e pignolo su ogni dettaglio.\n\n### Fatture\n\nDalle fatture estrai:\n- Il numero della fattura\n- la data\n- la descrizione della prestazione\n- la lista di impegni citati\n- la denominazione del fornitore\n- la partita iva\n- l'IBAN\n- l'importo imponibile\n- l'importo dell'IVA\n- l'importo lordo\n- il regime fiscale per l'IVA (Split Payment, Reverse Charge, ecc)\n\nSii preciso al centesimo e pignolo su ogni dettaglio.\n\n### SAL\n\nDi ogni SAL concentrati solo su due parti:\n- la parte iniziale, in cui viene riportato il quadro economico (questa parte è opzionale)\n- il riepilogo finale che riguarda il riassunto dei lavori eseguiti e relative detrazioni\n\nDa ogni SAL quindi estrai:\n- gli importi previsti dal quadro economico nella parte iniziale (lavori a misura, a corpo, in economia, il ribasso, oneri/costi della sicurezza e il totale del contratto)\n- gli stessi importi previsti nel SAL, nella parte in basso\nnel riepilogo finale del documento potrebbe esserci la somma del residuo. Se c'è, estraila.\n\nSe presente, riporta anche il contratto o il repertorio.\n\nNel riportare i dati in output sii preciso al centesimo e distingui attentamente tra gli importi indicati come riepilogo iniziale del quadro economico (se presente) e quelli specifici del SAL.\n\nNon inventare cifre. Se non è presente una cifra, riporta 'null' nel tuo output in corrispondenza di quella chiave.\n\n### Certificati di Pagamento\n\nIl certificato va in coppia con il suo SAL. Di solito riporta le stesse informazioni, ma potrebbe omettere le voci relative al quadro economico.\n\nDi ogni certificato di pagamento estrai:\n- il totale delle detrazioni (se presenti)\n- importo residuo (se presente)\n- costi o oneri della sicurezza (se presenti)\n- importo netto (da pagare)\n- l'importo dell'IVA\n- importo netto espresso in lettere\n- se citato riporta inoltre: \n  - il contratto o il repertorio\n  - il totale dell'importo dei lavori\n\nSii preciso al centesimo. Non inventare cifre. Se non è presente una cifra, riporta 'null' nel tuo output in corrispondenza di quella chiave.\n\nL'importo in lettere potrebbe contenere errori. Riporta ESATTAMENTE quello che ritrovi SENZA alcuna correzione o interpretazione.\n\n### Quadro economico\n\n\n\n## REGOLE RIGOROSE:\n- Se un dato manca, usa null.\n- NON inventare nulla.\n- Sii preciso al centesimo\n\n# OUTPUT\n\nUsa il seguente JSON schema per il tuo output. Restituisci SOLO un json in risposta senza ulteriore testo.\n\n```\njson\n{\n  \"type\": \"object\",\n  \"properties\": {\n    \"output\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"mappatura_documentale\": {\n          \"type\": \"object\",\n          \"description\": \"Contiene tutti i documenti estratti, raggruppati per tipologia funzionale.\",\n          \"properties\": {\n            \"documenti_contabili\": {\n              \"type\": \"object\",\n              \"properties\": {\n                \"sliq\": {\n                  \"type\": \"array\",\n                  \"items\": {\n                    \"type\": \"object\",\n                    \"properties\": {\n                      \"identificativo_documento\": { \"type\": \"string\" },\n                      \"numero_sliq\": { \"type\": \"string\" },\n                      \"determina\": { \"type\": \"string\" },\n                      \"data\": { \"type\": \"string\" },\n                      \"importo_totale_liquidazione\": { \"type\": [\"number\", \"null\"] },\n                      \"totale_detrazioni\": { \"type\": [\"number\", \"null\"] },\n                      \"mandati\": {\n                        \"type\": \"array\",\n                        \"items\": {\n                          \"type\": \"object\",\n                          \"properties\": {\n                            \"capitolo\": { \"type\": [\"string\", \"null\"], \"description\": \"Essenziale per verifica 'U' o 'R' riaccertamento dei residui\" },\n                            \"is_riaccertamento\": { \"type\": \"boolean\", \"description\": \"true se e solo se il capitolo inizia per 'R'\" },\n                            \"protocollo_impegno\": { \"type\": [\"string\", \"null\"], \"description\": \"Per verifica DGPRO\" },\n                            \"fatture_citate\": { \"type\": \"array\", \"items\": { \"type\": \"string\" } },\n                            \"importo_totale_fornitore\": { \"type\": [\"number\", \"null\"] },\n                            \"importo_totale_impegno\": { \"type\": [\"number\", \"null\"] },\n                            \"intestatario_documento\": { \"type\": [\"string\", \"null\"], \"description\": \"L'azienda che ha emesso la fattura (es. creditore originario)\" },\n                            \"beneficiario_effettivo\": { \"type\": \"string\", \"description\": \"Il soggetto che riceve materialmente il pagamento (es. factor o cessionario)\" },\n                            \"is_cessione_credito\": { \"type\": \"boolean\", \"description\": \"true se siamo di fronte alla cessione del credito, documentata nei testi\" },\n                            \"iban\": { \"type\": \"string\" }\n                          }\n                        }\n                      }\n                    }\n                  }\n                },\n                \"fatture\": {\n                  \"type\": \"array\",\n                  \"items\": {\n                    \"type\": \"object\",\n                    \"properties\": {\n                      \"identificativo_documento\": { \"type\": \"string\" },\n                      \"numero\": { \"type\": \"string\" },\n                      \"data\": { \"type\": [\"string\", \"null\"] },\n                      \"descrizione_prestazione\": { \"type\": [\"string\", \"null\"] },\n                      \"impegni_citati\": { \n                                \"type\": \"array\", \n                                \"items\": { \"type\": \"string\" },\n                                \"description\": \"Lista dei numeri di determine/impegni (es. DDPRO...) citati esplicitamente all'interno della fattura\"\n                            },\n                      \"denominazione_fornitore\": { \"type\": [\"string\", \"null\"], \"description\": \"Intestatario che emette la fattura\" },\n                      \"beneficiario_pagamento_indicato\": { \"type\": [\"string\", \"null\"], \"description\": \"Eventuale beneficiario diverso indicato in fattura per il pagamento\" },\n                      \"iban\": { \"type\": [\"string\", \"null\"] },\n                      \"partita_iva\": { \"type\": [\"string\", \"null\"] },\n                      \"importo_imponibile\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_iva\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_lordo\": { \"type\": [\"number\", \"null\"] },\n                      \"regime_fiscale_iva\": { \"type\": \"string\" }\n                    },\n                    \"required\": [\"identificativo_documento\", \"numero\", \"importo_imponibile\" ]\n                  }\n                }\n              }\n            },\n            \"documenti_tecnici\": {\n              \"type\": \"object\",\n              \"properties\": {\n                \"sal\": {\n                  \"type\": \"array\",\n                  \"items\": {\n                    \"type\": \"object\",\n                    \"properties\": {\n                      \"identificativo_documento\": { \"type\": \"string\" },\n                      \"numero_sal\": { \"type\": \"string\" },\n                      \"data\": { \"type\": [\"string\", \"null\"] },\n                      \"n_contratto_o_repertorio\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_contratto\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_lavori_quadro_economico_sal\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_lavori_a_misura_quadro_economico_sal\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_lavori_a_corpo_quadro_economico_sal\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_lavori_in_economia_quadro_economico_sal\": { \"type\": [\"number\", \"null\"] },\n                      \"ribasso_quadro_economico_sal\": { \"type\": [\"number\", \"null\"] },\n                      \"oneri_sicurezza_quadro_economico_sal\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_lavori_sal\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_lavori_a_misura_sal\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_lavori_a_corpo_sal\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_lavori_in_economia_sal\": { \"type\": [\"number\", \"null\"] },\n                      \"oneri_sicurezza_sal\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_residuo_sal\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_totale_sal\": { \"type\": [\"number\"] }\n                    }\n                  }\n                },\n                \"certificati_pagamento\": {\n                  \"type\": \"array\",\n                  \"items\": {\n                    \"type\": \"object\",\n                    \"properties\": {\n                      \"identificativo_documento\": { \"type\": \"string\" },\n                      \"numero\": { \"type\": \"string\" },\n                      \"n_contratto_o_repertorio\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_contratto\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_lavori_quadro_economico_cert_pag\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_lavori_a_misura_quadro_economico_cert_pag\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_lavori_a_corpo_quadro_economico_cert_pag\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_lavori_in_economia_quadro_economico_cert_pag\": { \"type\": [\"number\", \"null\"] },\n                      \"ribasso_quadro_economico_cert_pag\": { \"type\": [\"number\", \"null\"] },\n                      \"oneri_sicurezza_quadro_economico_cert_pag\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_lavori_cert_pag\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_lavori_a_misura_cert_pag\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_lavori_a_corpo_cert_pag\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_lavori_in_economia_cert_pag\": { \"type\": [\"number\", \"null\"] },\n                      \"oneri_sicurezza_cert_pag\": { \"type\": [\"number\", \"null\"] },\n                      \"totale_detrazioni_cert_pag\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_lordo_cert_pag\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_netto_cert_pag\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_netto_in_lettere_cert_pag\": { \"type\": [\"string\", \"null\"] },\n                      \"importo_iva_cert_pag\": { \"type\": [\"number\", \"null\"] },\n                      \"importo_residuo_cert_pag\": { \"type\": [\"number\", \"null\"] }\n                    }\n                  }\n                },\n                \"quadri_economici\": {\n                  \"type\": \"array\",\n                  \"items\": {\n                    \"type\": \"object\",\n                    \"properties\": {\n                      \"identificativo_documento\": { \"type\": \"string\" },\n                      \"data\": { \"type\": [\"string\", \"null\"] },\n                      \"importo_lavori\": { \"type\": [\"number\", \"null\"] },\n                      \"oneri_sicurezza\": { \"type\": [\"number\", \"null\"] }\n                    }\n                  }\n                }\n              }\n            }\n          },\n          \"required\": [\"documenti_contabili\", \"documenti_tecnici\"]\n        }\n      },\n      \"required\": [\"mappatura_documentale\"]\n    }\n  },\n  \"required\": [\"output\"]\n}\n```",
         "options": {
+          "systemMessage": "=# DATI DOCUMENTI:\n\n## Manifesto immagini\n{{ $json.manifesto_immagini }}\n\nNota bene: Le immagini sono allegate a questo prompt esattamente nell'ordine descritto qui sopra.\n\n## TESTO\n{{ JSON.stringify($json.documenti) }}\n\n# Role\nSei un revisore contabile del Comune di Bologna specializzato sugli atti di lavori pubblici.",
           "passthroughBinaryImages": true
         }
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 3.1,
       "position": [
-        112,
-        768
+        -1392,
+        480
       ],
-      "id": "e15f1820-2aab-4cfd-b5bd-222652b60aa2",
-      "name": "Estrattore Contabile"
+      "id": "0c06961a-836c-4188-9a85-e14369255633",
+      "name": "Estrattore Contabile",
+      "retryOnFail": false
     },
     {
       "parameters": {
         "promptType": "define",
-        "text": "=Role: Agente Specialista in Estrazione Dati per la Contabilità Pubblica (Comune di Bologna).\n\n# MISSIONE\nAnalizza il pacchetto di file forniti (testi estratti dai documenti di liquidazione). Devi mappare l'intero ecosistema della pratica senza formulare giudizi, agendo con estrema pignoleria.\n\n## File attesi\n\nDevi aspettarti i seguenti documenti, non per forza divisi in file diversi:\n- Atto di liquidazione\n- diversi Atti di impegno\n- Quadro Economico\n- Fattura o fatture\n- diverse Proposte di liquidazione del RUP\n- diversi SAL\n- diversi Certificati di pagamento\n- diverse SLIQ\n- Atto di nomina\n- Atti di delega (opzionale)\n- Atto di giroconto (opzionale)\n- Atto di variazione di V livello (opzionale)\n\n## Mappatura documentale\n\nEstrai i documenti e le informazioni come specificato di seguito. Per l'identificativo dei documenti usa esclusivamente la lista fornita: [{{ $json.output.lista_identificativi }}].\n\nOgni evidenza testuale deve riportare uno snippet testuale (max 500 caratteri) e il relativo documento in cui si verifica.\n\n**NB:** Lo snippet serve per motivare la discrepanza/variazione, quindi deve essere comprensibile ad una analisi successiva. Tu ora NON GIUDICARE, riporta il testo utile.\n\n### VARIANTI (CRITICO):\nEstrai informazioni in ognuno deei seguenti casi:\n- Per ogni modifica contrattuale\n- variante citata (es. ex art. 106 o 120)\n- una motivazione per variazione di importo\n- riferimento a Art Bonus\n- riferimento a Decreto Aiuti\n- ogni giustificazione valida di nota.\n\n### Fattura\n\nCerca le citazioni delle determine all'interno della causale della fattura\n\n### Identificativi\n\nConcentrati su un documenti per volta. Se noti discrepanze tra gli identificativi (CIG, CUP, CDR, Numero di Impegno, Protocollo impegno, contratto o repertorio) nei vari documenti, DEVI estrarre uno snippet testuale che ne spieghi la motivazione (se presente nel testo dell'atto di liquidazione).\n\n# OUTPUT\n\nPer il tuo output considera esclusivamente il seguente schema JSON. Restituisci quello senza altro testo.\nRispondi esclusivamente con il codice JSON. Non aggiungere testo prima o dopo.\n\n```\njson\n{\n  \"type\": \"object\",\n  \"properties\": {\n    \"output\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"evidenze_testuali\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"object\",\n            \"properties\": {\n              \"snippet\": { \"type\": \"string\" },\n              \"tipo_evidenza\": { \"type\": \"string\", \"enum\": [\"variante\", \"discrepanza_codici\", \"altro\"] },\n              \"identificativo_documento\": { \"type\": \"string\" }\n            },\n            \"required\": [\"snippet\", \"identificativo_documento\"]\n          }\n        }\n      },\n      \"required\": [\"identificativi\"]\n    }\n  },\n  \"required\": [\"output\"]\n}\n```\n\n# DATI DOCUMENTI:\n\n## Manifesto immagini\n{{ $json.manifesto_immagini }}\n\nNota bene: Le immagini sono allegate a questo prompt esattamente nell'ordine descritto qui sopra.\n\n## TESTO\n{{ JSON.stringify($json.documenti) }}\n",
-        "options": {}
+        "text": "=# MISSIONE\nAnalizza il pacchetto di file forniti (testi estratti dai documenti di liquidazione). Devi mappare l'intero ecosistema della pratica senza formulare giudizi, agendo con estrema pignoleria.\n\n## File attesi\n\nDevi aspettarti i seguenti documenti, non per forza divisi in file diversi:\n- Atto di liquidazione\n- diversi Atti di impegno\n- Quadro Economico\n- Fattura o fatture\n- diverse Proposte di liquidazione del RUP\n- diversi SAL\n- diversi Certificati di pagamento\n- diverse SLIQ\n- Atto di nomina\n- Atti di delega (opzionale)\n- Atto di giroconto (opzionale)\n- Atto di variazione di V livello (opzionale)\n\n## Mappatura documentale\n\nEstrai i documenti e le informazioni come specificato di seguito. Per l'identificativo dei documenti usa esclusivamente la lista fornita: [{{ $json.output.lista_identificativi }}].\n\nOgni evidenza testuale deve riportare uno snippet testuale (max 500 caratteri) e il relativo documento in cui si verifica.\n\n**NB:** Lo snippet serve per motivare la discrepanza/variazione, quindi deve essere comprensibile ad una analisi successiva. Tu ora NON GIUDICARE, riporta il testo utile.\n\n### VARIANTI (CRITICO):\nEstrai informazioni in ognuno deei seguenti casi:\n- Per ogni modifica contrattuale\n- variante citata (es. ex art. 106 o 120)\n- una motivazione per variazione di importo\n- riferimento a Art Bonus\n- riferimento a Decreto Aiuti\n- ogni giustificazione valida di nota.\n\n### Fattura\n\nCerca le citazioni delle determine all'interno della causale della fattura\n\n### Identificativi\n\nConcentrati su un documenti per volta. Se noti discrepanze tra gli identificativi (CIG, CUP, CDR, Numero di Impegno, Protocollo impegno, contratto o repertorio) nei vari documenti, DEVI estrarre uno snippet testuale che ne spieghi la motivazione (se presente nel testo dell'atto di liquidazione).\n\n### Cessioni del credito\n\nVerifica se nei documenti vengono indicate cessioni del credito e riporta ogni evidenza, in particolare evidenziando chi è l'intestatario delle fatture e chi è l'effettivo beneficiario.\n\n# OUTPUT\n\nPer il tuo output considera esclusivamente il seguente schema JSON. Restituisci quello senza altro testo.\nRispondi esclusivamente con il codice JSON. Non aggiungere testo prima o dopo.\n\n```\njson\n{\n  \"type\": \"object\",\n  \"properties\": {\n    \"output\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"evidenze_testuali\": {\n          \"type\": \"array\",\n          \"items\": {\n            \"type\": \"object\",\n            \"properties\": {\n              \"snippet\": { \"type\": \"string\" },\n              \"tipo_evidenza\": { \"type\": \"string\", \"enum\": [\"variante\", \"discrepanza_codici\", \"cessione_credito\", \"altro\"] },\n              \"identificativo_documento\": { \"type\": \"string\" }\n            },\n            \"required\": [\"snippet\", \"identificativo_documento\"]\n          }\n        }\n      },\n      \"required\": [\"identificativi\"]\n    }\n  },\n  \"required\": [\"output\"]\n}\n```\n\n",
+        "options": {
+          "systemMessage": "=# DATI DOCUMENTI:\n\n## Manifesto immagini\n{{ $json.manifesto_immagini }}\n\nNota bene: Le immagini sono allegate a questo prompt esattamente nell'ordine descritto qui sopra.\n\n## TESTO\n{{ JSON.stringify($json.documenti) }}\n\n# ROLE\nSei un Agente Specialista in Estrazione Dati per la Contabilità Pubblica (Comune di Bologna)."
+        }
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 3.1,
       "position": [
-        112,
-        960
+        -1392,
+        688
       ],
-      "id": "c012d9d5-39f8-4c6a-9afe-5183a63beaf3",
+      "id": "dd4613f6-0a49-4d8d-b4ee-e1394a2f15f7",
       "name": "Estrattore Evidenze testuali"
     },
     {
       "parameters": {
         "promptType": "define",
-        "text": "=Sei il Responsabile della Tracciabilità Contabile del Comune di Bologna. Il tuo compito è incrociare i codici identificativi tra gli atti di spesa e i documenti di pagamento.\n\n## Protocollo operativo\nSegui rigidamente il seguente protocollo operativo:\n1. **Codice Intervento**: \n    * Verifica che il codice sia identico tra i documenti nella sezione `identificativi.codice_intervento_sap`. Il valore di rifimento è quello dell'Atto di Impegno.\n    * **Controllo Presenza**: Deve essere presente in tutti i documenti (Atto di Liquidazione, Proposta di Liquidazione, Tutti gli Atti di Impegno, tutti i SAL, tutti i Certificati di pagamento, tutte le SLIQ, tutte le fatture). Se manca in uno di questi, segnala 'ERRORE'; fanno eccezione le fatture, dove se manca va segnalato un esito \"WARNING\". Il codice deve avere lo stesso valore nei documenti, ma potrebbe chiamarsi diversamente (es. Cod. Int., C.I.).\n\n2. **CUP**: \n    * Verifica la corrispondenza tra i documenti in `identificativi.cup`. Il valore di rifimento CUP è quello degli Atti di Impegno. Devono essere tutti uguali.\n    * **Confronto SLIQ**: Se il codice in SLIQ è diverso da quello dell'Impegno, cerca nelle `evidenze_testuali` della Liquidazione una spiegazione.\n    * **Confronto in documenti**: \n      * Deve essere presente e coerente nei seguenti documenti: Atto di liquidazione, Atti di impegno, SLIQ. Se non c'è, segnala ERRORE;\n      * Può essere presente nelle Proposte di Liquidazione, nei SAL e nei Certificati di Pagamento. Se c'è verifica la coerenza e segna l'esito. Se non c'è riporta comunque l'informazione\n      * Deve essere presente in Fattura. Se non c'è e non hai nessuna motivazione nelle evidenze testuali segnala 'ERRORE' e richiedi l'acquisizione di una PEC di rettifica dal settore proponente.\n    * **Sentenza CUP**: \n        * Diversi + Nessuna spiegazione = 'ERRORE'.\n        * Diversi + Spiegazione trovata = 'WARNING' (richiede verifica umana).\n\n3. **CIG**: \n    * Verifica la corrispondenza tra i documenti in `identificativi.cig`. Il valore di rifimento di CIG è quello degli Atti di Impegno. Devono essere tutti uguali.\n    * **Confronto SLIQ**: Se il codice in SLIQ è diverso da quello dell'Impegno, cerca nelle `evidenze_testuali` della Liquidazione una spiegazione.\n    * **Confronto in documenti**: \n      * Deve essere presente e coerente nei seguenti documenti: Atto di liquidazione, Atti di impegno, SLIQ. Se non c'è, segnala ERRORE;\n      * Può essere presente nelle Proposte di Liquidazione, nei SAL e nei Certificati di Pagamento. Se c'è verifica la coerenza e segna l'esito. Se non c'è riporta comunque l'informazione\n      * Deve essere presente in Fattura. Se non c'è e non hai nessuna motivazione nelle evidenze testuali segnala 'ERRORE' e richiedi l'acquisizione di una PEC di rettifica dal settore proponente.\n    * **Sentenza CIG**: \n        * Diversi + Nessuna spiegazione = 'ERRORE'.\n        * Diversi + Spiegazione trovata = 'WARNING' (richiede verifica umana).\n\n4. **Protocollo Impegno**:\n    * Verifica che il numero DDPRO dell'Impegno coincida tra SLIQ e Atto di Impegno\n    * **Caso Riaccertamento**: Se i numeri non tornano, verifica se negli snippet della SLIQ (non della liquidazione) è citata una 'Delibera di Riaccertamento'. Se presente e coerente, scrivi 'VALIDATO'.\n    * **Verifica Fattura**: L'impegno deve essere citato in fattura, quindi controlla che il codice dell'atto sia nelle fatture riportate nel JSON (campo `documenti_contabili`->`fatture`). Se manca, scrivi 'WARNING' e suggerisci l'acquisizione di una PEC di correzione.\n\n\n5. **Codice Contratto**: \n    * Verificare la coerenza del codice nei documenti in cui è riportato (riferimento: `identificativi.codice_contratto`. Potrebbe essere riportato a volte il numero del contratto e altre volte il numero di repertorio. CI deve essere una informazione che lega i due numeri.\n\n## Output\n\nL'oggetto restituito deve contenere i seguenti valori nei campi: `categoria`: \"Validazione codici\", `esito_globale`: [\"VALIDATO\", \"NON VALIDATO\", \"WARNING\"] e un array `controlli`.\n\n**REGOLA PER LA CITAZIONE DEI DOCUMENTI**: Per incrociare i dati tra i vari rami del JSON e per citare i documenti nel tuo output finale, devi utilizzare ESCLUSIVAMENTE il valore presente nel campo `identificativo_documento`. Questo campo contiene proprio il nome esatto e comprensibile (es. \"DDPRO 308/2026\", \"Fattura 2601000001\"). Inserisci questi valori nell'array `documenti_coinvolti`.\n\n**REGOLA FONDAMENTALE (Razionale di verifica)**: Per ogni oggetto all'interno dell'array `controlli`, PRIMA di dichiarare il campo `esito`, devi **obbligatoriamente** compilare il campo testuale `razionale_di_verifica`. In questo campo spiega il tuo ragionamento logico:\n1. Quali identificativi hai letto e da quali documenti (es. \"Ho letto il CIG X dalla Fattura Y\").\n2. Quale confronto hai effettuato (es. \"Il CIG coincide con quello dell'Atto Z\").\n3. Quale regola del tuo protocollo hai applicato per arrivare alla decisione.\n4. L'esito dedotto dalla regola applicata.\n\nSolo dopo aver scritto il razionale, compila il campo `esito`.\n\n## INPUT\n\n{{ JSON.stringify($json) }}\n",
+        "text": "=## Mission\nIl tuo compito è incrociare i codici identificativi tra gli atti di spesa e i documenti di pagamento.\n\n## Protocollo operativo\nSegui rigidamente il seguente protocollo operativo:\n1. **Codice Intervento**: \n    * Verifica che il codice sia identico tra i documenti nella sezione `identificativi.codice_intervento_sap`. Il valore di rifimento è quello dell'Atto di Impegno.\n    * **Controllo Presenza**: Deve essere presente in tutti i documenti (Atto di Liquidazione, Proposta di Liquidazione, Tutti gli Atti di Impegno, tutti i SAL, tutti i Certificati di pagamento, tutte le SLIQ, tutte le fatture). Se manca in uno di questi, segnala 'ERRORE'; fanno eccezione le fatture, dove se manca va segnalato un esito \"WARNING\". Il codice deve avere lo stesso valore nei documenti, ma potrebbe chiamarsi diversamente (es. Cod. Int., C.I.).\n\n2. **CUP**: \n    * Verifica la corrispondenza tra i documenti in `identificativi.cup`. Il valore di rifimento CUP è quello degli Atti di Impegno. Devono essere tutti uguali.\n    * **Confronto SLIQ**: Se il codice in SLIQ è diverso da quello dell'Impegno, cerca nelle `evidenze_testuali` della Liquidazione una spiegazione.\n    * **Confronto in documenti**: \n      * Deve essere presente e coerente nei seguenti documenti: Atto di liquidazione, Atti di impegno, SLIQ. Se non c'è, segnala ERRORE;\n      * Può essere presente nelle Proposte di Liquidazione, nei SAL e nei Certificati di Pagamento. Se c'è verifica la coerenza e segna l'esito. Se non c'è riporta comunque l'informazione\n      * Deve essere presente in Fattura. Se non c'è e non hai nessuna motivazione nelle evidenze testuali segnala 'ERRORE' e richiedi l'acquisizione di una PEC di rettifica dal settore proponente.\n    * **Sentenza CUP**: \n        * Diversi + Nessuna spiegazione = 'ERRORE'.\n        * Diversi + Spiegazione trovata = 'WARNING' (richiede verifica umana).\n\n3. **CIG**: \n    * Verifica la corrispondenza tra i documenti in `identificativi.cig`. Il valore di rifimento di CIG è quello degli Atti di Impegno. Devono essere tutti uguali.\n    * **Confronto SLIQ**: Se il codice in SLIQ è diverso da quello dell'Impegno, cerca nelle `evidenze_testuali` della Liquidazione una spiegazione.\n    * **Confronto in documenti**: \n      * Deve essere presente e coerente nei seguenti documenti: Atto di liquidazione, Atti di impegno, SLIQ. Se non c'è, segnala ERRORE;\n      * Può essere presente nelle Proposte di Liquidazione, nei SAL e nei Certificati di Pagamento. Se c'è verifica la coerenza e segna l'esito. Se non c'è riporta comunque l'informazione\n      * Deve essere presente in Fattura. Se non c'è e non hai nessuna motivazione nelle evidenze testuali segnala 'ERRORE' e richiedi l'acquisizione di una PEC di rettifica dal settore proponente.\n    * **Sentenza CIG**: \n        * Diversi + Nessuna spiegazione = 'ERRORE'.\n        * Diversi + Spiegazione trovata = 'WARNING' (richiede verifica umana).\n\n4. **Protocollo Impegno**:\n    * Verifica che il numero DDPRO dell'Impegno coincida tra SLIQ e Atto di Impegno\n    * **Caso Riaccertamento**: Se i numeri non tornano, verifica se negli snippet della SLIQ (non della liquidazione) è citata una 'Delibera di Riaccertamento'. Se presente e coerente, scrivi 'VALIDATO'.\n    * **Verifica Fattura**: L'impegno deve essere citato in fattura, quindi controlla che il codice dell'atto sia nelle fatture riportate nel JSON (campo `documenti_contabili`->`fatture`). Se manca, scrivi 'WARNING' e suggerisci l'acquisizione di una PEC di correzione.\n\n\n5. **Codice Contratto**: \n    * Verificare la coerenza del codice nei documenti in cui è riportato (riferimento: `identificativi.codice_contratto`. Potrebbe essere riportato a volte il numero del contratto e altre volte il numero di repertorio. CI deve essere una informazione che lega i due numeri.\n\n## Output\n\nL'oggetto restituito deve contenere i seguenti valori nei campi: `categoria`: \"Validazione codici\", `esito_globale`: [\"VALIDATO\", \"NON VALIDATO\", \"WARNING\"] e un array `controlli`.\n\n**REGOLA PER LA CITAZIONE DEI DOCUMENTI**: Per incrociare i dati tra i vari rami del JSON e per citare i documenti nel tuo output finale, devi utilizzare ESCLUSIVAMENTE il valore presente nel campo `identificativo_documento`. Questo campo contiene proprio il nome esatto e comprensibile (es. \"DDPRO 308/2026\", \"Fattura 2601000001\"). Inserisci questi valori nell'array `documenti_coinvolti`.\n\n**REGOLA FONDAMENTALE (Razionale di verifica)**: Per ogni oggetto all'interno dell'array `controlli`, PRIMA di dichiarare il campo `esito`, devi **obbligatoriamente** compilare il campo testuale `razionale_di_verifica`. In questo campo spiega il tuo ragionamento logico:\n1. Quali identificativi hai letto e da quali documenti (es. \"Ho letto il CIG X dalla Fattura Y\").\n2. Quale confronto hai effettuato (es. \"Il CIG coincide con quello dell'Atto Z\").\n3. Quale regola del tuo protocollo hai applicato per arrivare alla decisione.\n4. L'esito dedotto dalla regola applicata.\n\nSolo dopo aver scritto il razionale, compila il campo `esito`.\n\n\n",
         "hasOutputParser": true,
-        "options": {}
+        "options": {
+          "systemMessage": "=## INPUT\n\n{{ JSON.stringify($json) }}\n\n## ROLE\n\nSei il Responsabile della Tracciabilità Contabile del Comune di Bologna."
+        }
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 3.1,
       "position": [
-        1504,
-        288
+        0,
+        -96
       ],
-      "id": "0ab5161f-ec45-4609-bdb7-1101cbb3e08d",
+      "id": "7825fbd4-5954-459d-95f8-3c6697eb054e",
       "name": "Validatore Codici"
     },
     {
       "parameters": {
         "promptType": "define",
-        "text": "=Sei il Responsabile della Validazione Soggetti e Poteri del Comune di Bologna.\nLa tua missione è verificare la legittimità della firma dell'atto di liquidazione.\n\n## Protocollo Operativo\nSegui rigorosamente i seguenti controlli:\n* **Verifica Firmatario**: Controlla la corrispondenza tra firmatario e CDR e, in caso negativo, cerca un atto di delega connesso all'atto di liquidazione, controllandolo per confermare il potere di firma del delegato. Verificare inoltre la coerenza tra la nomina sindacale del firmatario dell'atto e il comparto organizzativo dell'intestatario dell'atto. Se non coerenti, cercare una delega nel campo `evidenze_testuali` o `atti_amministrativi.deleghe`. Usa il `tool_cdr_lookup`, specificando il `cdr_code` e la data di riferimento `ref_date` nel formato 'YYYY-MM-DD', per avere informazioni sui CDR che hai incontrato. Per la data usa la data del documento che stai analizzato.\n  - Devi verificare i seguenti documenti: Atto di liquidazione, SLIQ, Atti di delega (se presenti)\n\n* **Verifica RUP**: Usa il `tool_rup_delegation` usando il codice intervento (parametro `operation_code`). Verifica se il RUP citato nell'atto coincide con quello ufficiale nominato nell'atto di nomina. \n  - Devi assicurarti di questo sui seguenti documenti: Atto di liquidazione, Proposta di liquidazione del RUP, SAL, Certificato di pagamento, Atto di nomina\n    * **Controllo Semantico**: Se trovi una descrizione del codice, verifica che sia coerente con l'oggetto dell'atto. In caso di dubbi, scrivi 'WARNING'. Per accedere alla descrizione dell'intervento puoi usare il tool `tool_rup_delegation` specificando il parametro `operation_code` con il valore del Codice Intervento.\n\n* **Firmatario di Proposta di liquidazione, Certificato e SAL**: Verifica chi ha firmato i documenti e se poteva farlo.\n  - Verifica i seguenti documenti: Proposta di liquidazione del RUP, SAL, Certificato di pagamento, Atto di nomina\n\n* **Verifica beneficiari**: Verifica che Denominazione, Partita IVA e IBAN presenti nella Fattura coincidano esattamente con quelli presenti in `anagrafica_progetto.impresa_affidataria` o nei subappaltatori. In caso negativo, emetti WARNING.\n\nSentenza: Se tutto coincide scrivi 'VALIDATO'. Se ci sono discrepanze non spiegate da deleghe, scrivi 'NON VALIDATO' e specifica il motivo.\n\n## Output\n\nL'oggetto restitui deve contenere i seguenti valori nei campi: `categoria`: \"Validazione soggetti e poteri\", `esito_globale`: [\"VALIDATO\", \"NON VALIDATO\", \"WARNING\"] e un array `controlli`.\n\n**REGOLA PER LA CITAZIONE DEI DOCUMENTI**: Per incrociare i dati tra i vari rami del JSON e per citare i documenti nel tuo output finale, devi utilizzare ESCLUSIVAMENTE il valore presente nel campo `identificativo_documento`. Questo campo contiene proprio il nome esatto e comprensibile (es. \"DDPRO 308/2026\", \"Fattura 2601000001\"). Inserisci questi valori nell'array `documenti_coinvolti`.\n\n**REGOLA FONDAMENTALE (Razionale di verifica)**: Per ogni oggetto all'interno dell'array `controlli`, PRIMA di dichiarare il campo `esito`, devi **obbligatoriamente** compilare il campo testuale `razionale_di_verifica`. In questo campo spiega il tuo ragionamento logico:\n1. Quali identificativi hai letto e da quali documenti (es. \"Ho letto il CIG X dalla Fattura Y\").\n2. Quale confronto hai effettuato (es. \"Il CIG coincide con quello dell'Atto Z\").\n3. Quale regola del tuo protocollo hai applicato per arrivare alla decisione.\n4. L'esito dedotto dalla regola applicata.\n\nSolo dopo aver scritto il razionale, compila il campo `esito`.\n\n\n## Input\n\n{{ JSON.stringify($json) }}",
+        "text": "=## Mission\nLa tua missione è verificare la legittimità della firma dell'atto di liquidazione.\n\n## Protocollo Operativo\nSegui rigorosamente i seguenti controlli:\n* **Verifica Firmatario**: Controlla la corrispondenza tra firmatario e CDR e, in caso negativo, cerca un atto di delega connesso all'atto di liquidazione, controllandolo per confermare il potere di firma del delegato. Verificare inoltre la coerenza tra la nomina sindacale del firmatario dell'atto e il comparto organizzativo dell'intestatario dell'atto. Se non coerenti, cercare una delega nel campo `evidenze_testuali` o `atti_amministrativi.deleghe`. Usa il `tool_cdr_lookup`, specificando il `cdr_code` e la data di riferimento `ref_date` nel formato 'YYYY-MM-DD', per avere informazioni sui CDR che hai incontrato. Per la data usa la data del documento che stai analizzato.\n  - Devi verificare i seguenti documenti: Atto di liquidazione, SLIQ, Atti di delega (se presenti)\n\n* **Verifica RUP**: Usa il `tool_rup_delegation` usando il codice intervento (parametro `operation_code`). Verifica se il RUP citato nell'atto coincide con quello ufficiale nominato nell'atto di nomina. \n  - Devi assicurarti di questo sui seguenti documenti: Atto di liquidazione, Proposta di liquidazione del RUP, SAL, Certificato di pagamento, Atto di nomina\n    * **Controllo Semantico**: Se trovi una descrizione del codice, verifica che sia coerente con l'oggetto dell'atto. In caso di dubbi, scrivi 'WARNING'. Per accedere alla descrizione dell'intervento puoi usare il tool `tool_rup_delegation` specificando il parametro `operation_code` con il valore del Codice Intervento.\n\n* **Firmatario di Proposta di liquidazione, Certificato e SAL**: Verifica chi ha firmato i documenti e se poteva farlo.\n  - Verifica i seguenti documenti: Proposta di liquidazione del RUP, SAL, Certificato di pagamento, Atto di nomina\n\nSentenza: Se tutto coincide scrivi 'VALIDATO'. Se ci sono discrepanze non spiegate da deleghe, scrivi 'NON VALIDATO' e specifica il motivo.\n\n## Output\n\nL'oggetto restitui deve contenere i seguenti valori nei campi: `categoria: \"Validazione soggetti e poteri\"`, `esito_globale: [\"VALIDATO\", \"NON VALIDATO\", \"WARNING\"]` e un array `controlli`.\n\n**REGOLA PER LA CITAZIONE DEI DOCUMENTI**: Per incrociare i dati tra i vari rami del JSON e per citare i documenti nel tuo output finale, devi utilizzare ESCLUSIVAMENTE il valore presente nel campo `identificativo_documento`. Questo campo contiene proprio il nome esatto e comprensibile (es. \"DDPRO 308/2026\", \"Fattura 2601000001\"). Inserisci questi valori nell'array `documenti_coinvolti`.\n\n**REGOLA FONDAMENTALE (Razionale di verifica)**: Per ogni oggetto all'interno dell'array `controlli`, PRIMA di dichiarare il campo `esito`, devi **obbligatoriamente** compilare il campo testuale `razionale_di_verifica`. In questo campo spiega il tuo ragionamento logico:\n1. Quali identificativi hai letto e da quali documenti (es. \"Ho letto il CIG X dalla Fattura Y\").\n2. Quale confronto hai effettuato (es. \"Il CIG coincide con quello dell'Atto Z\").\n3. Quale regola del tuo protocollo hai applicato per arrivare alla decisione.\n4. L'esito dedotto dalla regola applicata.\n\nSolo dopo aver scritto il razionale, compila il campo `esito`.\n\n\n",
         "hasOutputParser": true,
-        "options": {}
+        "options": {
+          "systemMessage": "=## Input\n\n{{ JSON.stringify($json) }}\n\n## ROLE\nSei il Responsabile della Validazione Soggetti e Poteri del Comune di Bologna."
+        }
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 3.1,
       "position": [
-        1504,
-        480
+        0,
+        96
       ],
-      "id": "a38485e2-f4ef-45b4-8ffc-e742c9b4559d",
+      "id": "9c5ef043-4341-4c7d-b4ed-d1df9bc17e5b",
       "name": "Validatore Soggetti e Poteri"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3-flash-preview",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -1680,
+        1152
+      ],
+      "id": "b060f411-3c70-4a99-aa05-be3b8ccd0170",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "uEylZ0SDKP1lOLMx",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3-flash-preview",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -160,
+        1328
+      ],
+      "id": "9dd0e9b4-fd91-49a9-903d-af0fd81ac2dc",
+      "name": "Google Gemini Chat Model1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "uEylZ0SDKP1lOLMx",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "verifica-atti",
+          "mode": "id"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        -1744,
+        896
+      ],
+      "id": "28ffb6ae-5135-4218-be2b-93f17a10ffae",
+      "name": "LiteLLM",
+      "credentials": {
+        "openAiApi": {
+          "id": "u6U96YXJDX2JIzVk",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "verifica-atti",
+          "mode": "id"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        -304,
+        1344
+      ],
+      "id": "25be13a8-5e95-4156-af56-33af0cefe70b",
+      "name": "LiteLLM1",
+      "credentials": {
+        "openAiApi": {
+          "id": "u6U96YXJDX2JIzVk",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=## Mission\nLa tua missione è verificare la legittimità dei beneficiari dei pagamenti e l'evidenza della gestione dei pagamenti e cessione del credito.\n\n## Protocollo Operativo\n\n### Verifica beneficiari\n\n* **Verifica beneficiari**: Verifica che Denominazione, Partita IVA e IBAN presenti nella Fattura coincidano esattamente con quelli presenti in `anagrafica_progetto.impresa_affidataria` o nei subappaltatori. In caso negativo, emetti WARNING.\n\n### Caso speciale: cessione del credito\n\n**Catena di Verifica per Cessione del Credito**: Non dare mai per scontato l'esito dei flussi finanziari. Se individui una discrepanza tra l'Impresa Affidataria e il beneficiario del pagamento, verifica obbligatoriamente la presenza di snippet classificati come `cessione_credito`.\n\n**Controllo di Filiera Documentale**: Controlla severamente in quali documenti è stata riscontrata l'evidenza della cessione del credito. Assicurati che l'informazione non sia presente solo nel documento contabile (es. Fattura o SLIQ), ma sia confermata anche nella documentazione autorizzativa redatta dal RUP o dalla Direzione Lavori (Proposta di Liquidazione, Atto di liquidazione, SAL o Certificato di pagamento).\n\n**NB**: In caso di cessione del credito, aggiungi un controllo specifico che funga da \"informativa\" all'utente verificatore. Il controllo deve indicare espressamente che siamo in un caso di cessione del credito.\n\n#### Sentenza Rigorosa\n\n- Se la cessione è giustificata e la catena è coerente (presente sia nei documenti contabili che in quelli autorizzativi/amministrativi), l'esito è 'GIUSTIFICATO'.\n\n- Se la cessione del credito è richiesta nella Fattura o indicata nella SLIQ, ma è assente dalla Proposta di Liquidazione o dall'Atto di Liquidazione, l'esito è 'NON_VALIDATO' (o 'WARNING'). \n\nNel campo `razionale_di_verifica`, l'agente dovrà scrivere: \"Rilevata cessione del credito in fattura, ma l'informazione non è confermata nei documenti pertinenti della catena autorizzativa (es. Proposta di liquidazione o Atto).\"\n\n### DURC\n\nPer i DURC fai riferimento alla lista in `mappatura_documentale -> documenti_contabili -> durc`.\n\nEsegui rigorosamente i seguenti controlli relativi ai DURC:\n  - Tutti i DURC DEVONO essere regolari. Il testo di regolarità è riportato nel testo dei DURC stessi. Riporta l'esito del controllo nel tuo risultato finale;\n  - Non tutti i DURC sono necessari per legge. Riporta le tue valutazioni in un controllo dedicato in base alla normativa vigente alla data dell'atto;\n  - Tutti i DURC presenti devono essere validi al momento della data dell'atto di liquidazione:\n    - se il DURC è scaduto, riporta espressamente l'esito \"NON_VALIDATO\"; \n    - se il DURC non è scaduto, riporta espressamente l'esito \"VALIDATO\".\n\nSentenza: Se tutto coincide scrivi 'VALIDATO'. Se ci sono discrepanze non spiegate da deleghe, scrivi 'NON VALIDATO' e specifica il motivo.\n\n## Output\n\nL'oggetto restitui deve contenere i seguenti valori nei campi: `categoria: \"Beneficiari\"`, `esito_globale: [\"VALIDATO\", \"NON VALIDATO\", \"WARNING\"]` e un array `controlli`.\n\n**REGOLA PER LA CITAZIONE DEI DOCUMENTI**: Per incrociare i dati tra i vari rami del JSON e per citare i documenti nel tuo output finale, devi utilizzare ESCLUSIVAMENTE il valore presente nel campo `identificativo_documento`. Questo campo contiene proprio il nome esatto e comprensibile. Inserisci questi valori nell'array `documenti_coinvolti`.\n\n**REGOLA FONDAMENTALE (Razionale di verifica)**: Per ogni oggetto all'interno dell'array `controlli`, PRIMA di dichiarare il campo `esito`, devi **obbligatoriamente** compilare il campo testuale `razionale_di_verifica`. In questo campo spiega il tuo ragionamento logico:\n1. Quali identificativi hai letto e da quali documenti (es. \"Ho letto il CIG X dalla Fattura Y\").\n2. Quale confronto hai effettuato (es. \"Il CIG coincide con quello dell'Atto Z\").\n3. Quale regola del tuo protocollo hai applicato per arrivare alla decisione.\n4. L'esito dedotto dalla regola applicata.\n\nSolo dopo aver scritto il razionale, compila il campo `esito`.",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "=## INPUT\n\n{{ JSON.stringify($json) }}\n\n## ROLE\nSei un esperto amministrativo del Comune di Bologna, specializzato negli atti di liquidazione di Lavori Pubblici."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        0,
+        928
+      ],
+      "id": "9b27e0d1-0289-453c-9e75-8cdd2b48fbec",
+      "name": "Agente Verifica Beneficiari"
     }
   ],
   "pinData": {
@@ -768,42 +855,6 @@
         ]
       ]
     },
-    "Google Gemini Chat Model4": {
-      "ai_languageModel": [
-        [
-          {
-            "node": "Agente Contabile",
-            "type": "ai_languageModel",
-            "index": 0
-          },
-          {
-            "node": "Agente Armonizzazione Contabile",
-            "type": "ai_languageModel",
-            "index": 0
-          },
-          {
-            "node": "Agente di Conformità Amministrativa e Temporale",
-            "type": "ai_languageModel",
-            "index": 0
-          },
-          {
-            "node": "Agente Supervisor",
-            "type": "ai_languageModel",
-            "index": 0
-          },
-          {
-            "node": "Validatore Soggetti e Poteri",
-            "type": "ai_languageModel",
-            "index": 0
-          },
-          {
-            "node": "Validatore Codici",
-            "type": "ai_languageModel",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Agente Contabile": {
       "main": [
         [
@@ -900,6 +951,11 @@
           },
           {
             "node": "Agente di Conformità Amministrativa e Temporale",
+            "type": "ai_outputParser",
+            "index": 0
+          },
+          {
+            "node": "Agente Verifica Beneficiari",
             "type": "ai_outputParser",
             "index": 0
           }
@@ -1004,37 +1060,6 @@
           {
             "node": "Merge2",
             "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Google Gemini Chat Model": {
-      "ai_languageModel": [
-        [
-          {
-            "node": "Estrattore identificativi",
-            "type": "ai_languageModel",
-            "index": 0
-          },
-          {
-            "node": "Estrattore Soggetti e Poteri",
-            "type": "ai_languageModel",
-            "index": 0
-          },
-          {
-            "node": "Estrattore Codici",
-            "type": "ai_languageModel",
-            "index": 0
-          },
-          {
-            "node": "Estrattore Contabile",
-            "type": "ai_languageModel",
-            "index": 0
-          },
-          {
-            "node": "Estrattore Evidenze testuali",
-            "type": "ai_languageModel",
             "index": 0
           }
         ]
@@ -1192,13 +1217,13 @@
             "node": "Agente di Conformità Amministrativa e Temporale",
             "type": "main",
             "index": 0
+          },
+          {
+            "node": "Agente Verifica Beneficiari",
+            "type": "main",
+            "index": 0
           }
         ]
-      ]
-    },
-    "Execution Data": {
-      "main": [
-        []
       ]
     },
     "Edit Fields": {
@@ -1266,35 +1291,130 @@
           }
         ]
       ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Estrattore Evidenze testuali",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Estrattore identificativi",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Estrattore Contabile",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Estrattore Codici",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Estrattore Soggetti e Poteri",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agente Verifica Beneficiari",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Agente di Conformità Amministrativa e Temporale",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Agente Armonizzazione Contabile",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Agente Contabile",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Agente Supervisor",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Validatore Soggetti e Poteri",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Validatore Codici",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LiteLLM": {
+      "ai_languageModel": [
+        []
+      ]
+    },
+    "LiteLLM1": {
+      "ai_languageModel": [
+        []
+      ]
+    },
+    "Agente Verifica Beneficiari": {
+      "main": [
+        [
+          {
+            "node": "Merge Agenti",
+            "type": "main",
+            "index": 5
+          }
+        ]
+      ]
     }
   },
   "active": true,
   "settings": {
     "executionOrder": "v1",
     "binaryMode": "separate",
-    "availableInMCP": false,
     "timeSavedMode": "fixed",
+    "errorWorkflow": "lpFNNYNROprsScgU",
     "timezone": "Europe/Rome",
     "callerPolicy": "workflowsFromSameOwner",
-    "errorWorkflow": "nacp4iZ67SHrOqh6"
+    "availableInMCP": false,
+    "executionTimeout": 1200,
+    "timeSavedPerExecution": 6
   },
-  "versionId": "3a0a7638-7f3d-4876-8ff0-4e139efd2bf7",
+  "versionId": "82b33b5a-5807-48a1-8502-3bf38ae38e73",
   "meta": {
     "templateCredsSetupCompleted": true,
-    "instanceId": "4d96e8837a23850635d8f89c72c5470c0d3c8bc85805a12c3b1acf26a74bc9b7"
+    "instanceId": "64df7157384450da764593c081308cf30b06c1b533f52c860b0f4dd3d09c5af5"
   },
-  "id": "GRvo3dAhaumMtOyS",
+  "id": "iezqB3eC4Qb1OZMi",
   "tags": [
     {
-      "updatedAt": "2026-02-26T11:57:45.386Z",
-      "createdAt": "2026-02-26T11:57:45.386Z",
-      "id": "8e61WRKGzTQBqmjo",
+      "updatedAt": "2026-04-24T10:48:11.371Z",
+      "createdAt": "2026-04-24T10:48:11.371Z",
+      "id": "WLUyqgXKkYDrAmUt",
       "name": "AI"
     },
     {
-      "updatedAt": "2026-02-26T11:57:42.455Z",
-      "createdAt": "2026-02-26T11:57:42.455Z",
-      "id": "JJslFmByWBRNEpvf",
+      "updatedAt": "2026-04-24T10:48:11.340Z",
+      "createdAt": "2026-04-24T10:48:11.340Z",
+      "id": "JSJmneu5YAAQKZPf",
       "name": "Bilancio"
     }
   ]
